@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knowledge-Centric Agents for Workflow Generation in ComfyUI</title>
+<meta name="description" content="ECCV 2026. An agent that turns a plain task description into a complete, executable ComfyUI workflow by modelling expert knowledge as an explicit hierarchy: invert, inject, infer.">
+<!-- Open Graph. TODO: replace SITE_URL with the absolute URL of the deployed page (crawlers need absolute image URLs). -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Knowledge-Centric Agents for Workflow Generation in ComfyUI">
+<meta property="og:description" content="ECCV 2026 · INSAIT & Adobe Research. From a plain task description to a complete, executable ComfyUI workflow. 86.9% Pass vs 36.4% for the strongest prior agent.">
+<meta property="og:image" content="SITE_URL/assets/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#F7F4F6; --surface:#FFFFFF; --surface-2:#EFE9ED; --surface-3:#E6DFE4;
+  --ink:#1D1520; --ink-2:#4E434B; --ink-3:#7E727A; --line:#DED5DB; --line-2:#CFC4CC;
+  --brand:#8B1A58; --brand-ink:#7A1450; --brand-soft:#F4E2EB; --brand-line:#D9A9C3;
+  --rule:#B86A00; --rule-ink:#8F5200; --rule-soft:#F7E9D3;
+  --exec:#2E7D4F; --exec-ink:#22643E; --exec-soft:#DDEFE3;
+  --bar-muted:#C9BEC6; --bar-track:#EFE9ED;
+  --canvas:#25222A; --canvas-dot:#3D3843; --node:#34303A; --node-head:#2A272E; --node-line:#48434E; --node-text:#ECE6EA; --node-text-2:#B4ABB1; --panel:#2C2831;
+  --shadow:0 1px 2px rgba(29,21,32,.06),0 8px 24px -12px rgba(29,21,32,.18);
+  --w-model:#B39DDB; --w-clip:#FFD500; --w-vae:#FF6E6E; --w-cond:#FFA931; --w-latent:#FF9CF9; --w-image:#64B5F6; --w-cnet:#00D78D; --w-mask:#81C784; --w-upscale:#9BD1C5;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#151217; --surface:#1E1A20; --surface-2:#272229; --surface-3:#312B33;
+    --ink:#F1EAEE; --ink-2:#C4B9C0; --ink-3:#8E838B; --line:#342D36; --line-2:#453D47;
+    --brand:#C6428A; --brand-ink:#EA92C2; --brand-soft:#3A1F30; --brand-line:#6E3556;
+    --rule:#E09A3B; --rule-ink:#F0B86A; --rule-soft:#3A2C17;
+    --exec:#5FBE86; --exec-ink:#8AD6A8; --exec-soft:#1D3327;
+    --bar-muted:#4A424C; --bar-track:#272229;
+    --canvas:#1B181E; --canvas-dot:#302B34; --node:#2A262E; --node-head:#221F26; --node-line:#3E3843; --node-text:#ECE6EA; --node-text-2:#A99FA6; --panel:#241F27;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans",ui-sans-serif,system-ui,"Segoe UI",Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+img,svg,video{display:block;max-width:100%}
+a{color:var(--brand-ink);text-decoration-thickness:1px;text-underline-offset:3px}
+a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:3px}
+button{font:inherit;color:inherit}
+h1,h2,h3{font-family:"Bricolage Grotesque","IBM Plex Sans",system-ui,sans-serif;font-weight:700;letter-spacing:-.01em;text-wrap:balance;margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+.eyebrow{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;letter-spacing:.02em;border:1px solid var(--line-2);color:var(--ink-2);background:var(--surface)}
+.pill.sft{background:var(--brand-soft);border-color:var(--brand-line);color:var(--brand-ink)}
+.pill.rule{background:var(--rule-soft);border-color:transparent;color:var(--rule-ink)}
+.pill.exec{background:var(--exec-soft);border-color:transparent;color:var(--exec-ink)}
+.pill.llm{background:var(--surface-2);border-color:transparent;color:var(--ink-2)}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:22px;height:60px}
+.logos{display:flex;align-items:center;gap:18px}
+.logos img.insait{height:24px;width:auto}
+.logos .adobe{display:flex;align-items:center;gap:7px;font-weight:600;font-size:14.5px;color:var(--ink)}
+.logos .adobe img{height:19px;width:auto}
+.top nav{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+.top nav a{font-size:13.5px;color:var(--ink-2);text-decoration:none;padding:6px 10px;border-radius:6px}
+.top nav a:hover{background:var(--surface-2);color:var(--ink)}
+.top nav a.cta{color:var(--brand-ink);font-weight:600}
+@media (max-width:760px){.top nav{display:none}}
+
+/* hero */
+.hero{padding:52px 0 0;text-align:center}
+.conf{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:center;margin-bottom:22px}
+.conf img{height:44px;width:auto}
+.conf .eyebrow{color:var(--ink-2)}
+h1.title{font-size:clamp(34px,4.6vw,60px);line-height:1.02;font-variation-settings:"opsz" 96;letter-spacing:-.025em;font-weight:800;max-width:20ch;margin:0 auto}
+h1.title em{font-style:normal;color:var(--brand-ink)}
+.thesis{margin:22px auto 0;font-size:clamp(17px,1.5vw,20px);line-height:1.5;color:var(--ink-2);max-width:62ch}
+.thesis b{color:var(--ink);font-weight:600}
+.authors{margin:22px auto 0;font-size:15.5px;line-height:1.7;color:var(--ink-2);max-width:80ch}
+.authors .names{color:var(--ink);font-weight:500}
+.authors sup{font-size:.7em;color:var(--ink-3)}
+.authors .mail{color:var(--brand-ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:24px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);text-decoration:none;font-weight:500;font-size:14.5px;cursor:pointer;transition:transform .12s ease,background .12s ease}
+.btn:hover{background:var(--surface-2);text-decoration:none}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary:hover{background:var(--brand-ink)}
+.btn.soon{opacity:.6;cursor:default}
+.btn.soon:hover{background:var(--surface)}
+.btn svg{width:15px;height:15px}
+.btn .tag{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-3)}
+.demo-video{margin:38px auto 0;max-width:1180px;border-radius:16px;overflow:hidden;background:var(--canvas);border:1px solid var(--node-line);box-shadow:var(--shadow)}
+.demo-video video{width:100%;aspect-ratio:16/9;background:#000}
+.caption{font-size:13.5px;color:var(--ink-3);margin-top:12px;line-height:1.5;max-width:90ch}
+.hero .caption{margin:12px auto 0;text-align:center}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:40px}
+@media (max-width:860px){.kpis{grid-template-columns:1fr}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px 16px;box-shadow:var(--shadow);display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:baseline;text-align:left}
+.kpi .val{font-family:"Bricolage Grotesque","IBM Plex Sans",sans-serif;font-weight:800;font-size:42px;line-height:1;letter-spacing:-.03em;color:var(--brand-ink);font-variation-settings:"opsz" 96}
+.kpi .lab{font-size:14px;font-weight:600;color:var(--ink)}
+.kpi .sub{grid-column:1/-1;font-size:12.5px;color:var(--ink-3)}
+.kpi .meter{grid-column:1/-1;height:6px;border-radius:3px;background:var(--bar-track);position:relative;overflow:hidden;margin-top:6px}
+.kpi .meter i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+.kpi .meter i.ours{background:var(--brand)}
+.kpi .meter i.base{background:var(--bar-muted)}
+.kpi .legend{grid-column:1/-1;display:flex;gap:14px;font-size:11.5px;color:var(--ink-3);margin-top:6px}
+.kpi .legend i{display:inline-block;width:10px;height:6px;border-radius:2px;vertical-align:middle;margin-right:5px}
+
+/* sections */
+section{padding:72px 0 0}
+.sec-head{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:28px;padding-bottom:14px;border-bottom:2px solid var(--brand)}
+.sec-head h2{font-size:clamp(26px,3vw,36px);line-height:1.08;font-variation-settings:"opsz" 48}
+.sec-head .eyebrow{color:var(--brand-ink)}
+.sec-head p{margin:0;color:var(--ink-2);max-width:70ch;font-size:16.5px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media (max-width:860px){.grid-2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px 24px}
+.card h3{font-size:19px;margin-bottom:8px;line-height:1.25}
+.card p{margin:0;color:var(--ink-2);font-size:15.5px}
+.card p + p{margin-top:10px}
+.callout{border-radius:12px;padding:20px 24px;background:var(--brand-soft);border:1px solid var(--brand-line);display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.callout .big{font-family:"Bricolage Grotesque","IBM Plex Sans",sans-serif;font-weight:800;font-size:44px;line-height:1;letter-spacing:-.03em;color:var(--brand-ink);font-variation-settings:"opsz" 96}
+.callout p{margin:0;color:var(--ink);font-size:15.5px;max-width:60ch}
+.callout p small{display:block;color:var(--ink-2);margin-top:4px}
+
+/* method */
+.verbs{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-bottom:30px}
+@media (max-width:860px){.verbs{grid-template-columns:1fr}}
+.verb{padding:0 0 0 18px;border-left:3px solid var(--line-2)}
+.verb.v1{border-color:var(--exec)}.verb.v2{border-color:var(--brand)}.verb.v3{border-color:var(--rule)}
+.verb h3{font-size:22px;letter-spacing:-.01em}
+.verb p{margin:6px 0 0;color:var(--ink-2);font-size:15.5px}
+.figure{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+.figure img{width:100%;height:auto}
+.inject{margin-top:22px;display:grid;grid-template-columns:1.2fr .8fr;gap:22px;align-items:start}
+@media (max-width:900px){.inject{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%;font-size:14px}
+table th{text-align:left;font-weight:600;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding:8px 10px;border-bottom:1px solid var(--line-2)}
+table td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink-2)}
+table td:first-child{color:var(--ink);font-weight:500}
+table tr:last-child td{border-bottom:0}
+.num{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;text-align:right}
+table th.num{text-align:right}
+tr.ours td{color:var(--brand-ink);font-weight:600;background:var(--brand-soft)}
+tr.ours td:first-child{border-radius:6px 0 0 6px}tr.ours td:last-child{border-radius:0 6px 6px 0}
+.table-scroll{overflow-x:auto}
+#extTable td,#extTable th{white-space:nowrap}
+.setup{font-size:13.5px;color:var(--ink-3);margin-top:12px;line-height:1.6}
+.setup b{color:var(--ink-2);font-weight:500}
+
+/* examples */
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.tab{padding:8px 14px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer;font-size:14px;font-weight:500;color:var(--ink-2);display:inline-flex;gap:8px;align-items:center}
+.tab .mono{font-size:11.5px;color:var(--ink-3)}
+.tab[aria-selected="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.tab[aria-selected="true"] .mono{color:#f4d7e6}
+.tab:hover:not([aria-selected="true"]){background:var(--surface-2)}
+.ex-panel[hidden]{display:none}
+.ex-top{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:14px;align-items:stretch}
+@media (max-width:980px){.ex-top{grid-template-columns:1fr}}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;min-width:0}
+.stage .eyebrow{margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.stage .eyebrow .pill{font-size:10.5px;padding:2px 8px}
+.stage p{margin:0;font-size:14.5px;line-height:1.55;color:var(--ink)}
+.stage.strategy p{color:var(--ink-2)}
+.stage pre{margin:0;font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;line-height:1.5;color:var(--ink-2);white-space:pre-wrap;word-break:normal;overflow-wrap:anywhere;padding:0;max-height:360px;overflow:auto}
+.stage pre .ln{display:block;padding:2px 6px 2px 22px;text-indent:-16px;border-radius:4px;cursor:default}
+.stage pre .ln:hover,.stage pre .ln.hl{background:var(--brand-soft);color:var(--brand-ink)}
+.stage pre .fn{color:var(--ink);font-weight:500}
+.stage pre .ln:hover .fn,.stage pre .ln.hl .fn{color:var(--brand-ink)}
+.stage pre .v{color:var(--ink-3)}
+.ex-canvas{margin-top:14px}
+.canvas{position:relative;background:var(--canvas);border-radius:16px;overflow:hidden;color:var(--node-text);border:1px solid var(--node-line)}
+.canvas::before{content:"";position:absolute;inset:0;background-image:radial-gradient(var(--canvas-dot) 1px,transparent 1.2px);background-size:22px 22px;opacity:.9;pointer-events:none}
+.canvas > *{position:relative}
+.canvas-head{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding:14px 18px 4px}
+.canvas-head .who{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--node-text-2)}
+.canvas-head .who .arrow{color:var(--node-text-2)}
+.canvas .pill.rule{background:color-mix(in srgb,var(--rule) 22%,var(--node));border-color:transparent;color:#F0B86A}
+.canvas .pill.llm{background:var(--node);border-color:var(--node-line);color:var(--node-text)}
+.canvas .pill.exec{background:color-mix(in srgb,var(--exec) 22%,var(--node));border-color:transparent;color:#8AD6A8}
+.canvas-tools{margin-left:auto}
+.btn.ghost{background:transparent;border-color:var(--node-line);color:var(--node-text);font-size:13px;padding:7px 12px}
+.btn.ghost:hover{background:var(--node)}
+.graph-scroll{overflow-x:auto;overflow-y:hidden;padding:6px 14px 10px;scrollbar-width:thin}
+.graph-scroll svg{min-width:980px;width:100%;height:auto}
+.legend-row{display:flex;flex-wrap:wrap;gap:8px 16px;padding:8px 18px 16px;font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;color:var(--node-text-2)}
+.legend-row span i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.result{display:grid;grid-template-columns:1fr;gap:10px}
+.result .frame{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface-2)}
+.result .frame img{width:100%;height:auto;aspect-ratio:1;object-fit:cover}
+.result .frame .orig{position:absolute;border:2px dashed rgba(255,255,255,.9);pointer-events:none;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+.result .frame .pip{position:absolute;left:10px;top:10px;width:30%;border-radius:6px;overflow:hidden;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.result .frame .pip span{position:absolute;left:0;right:0;bottom:0;background:rgba(20,14,18,.7);color:#fff;font-family:"IBM Plex Mono",monospace;font-size:11px;text-align:center;padding:2px 0}
+.result .lab{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--ink-3);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.result .lab b{color:var(--exec-ink);font-weight:500}
+/* graph svg */
+.g-node{cursor:default}
+.g-node rect.body{fill:var(--node);stroke:var(--node-line);stroke-width:1}
+.g-node text{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;fill:var(--node-text)}
+.g-node text.title{font-size:12.5px;font-weight:500}
+.g-node text.slot{font-size:10px;fill:var(--node-text-2)}
+.g-node text.meta{font-size:10px;fill:var(--node-text-2)}
+.g-node.hl rect.body,.g-node:hover rect.body{stroke:var(--brand);stroke-width:1.5}
+.g-node.hl path.head{fill:color-mix(in srgb,var(--brand) 45%,var(--node-head))}
+.g-wire{fill:none;stroke-width:2;stroke-linecap:round;opacity:.85;transition:opacity .15s}
+.g-wire.dim{opacity:.15}
+.g-wire.hl{opacity:1;stroke-width:3}
+.g-anim .g-node{opacity:0;transform:translateY(6px);transition:opacity .45s ease,transform .45s ease}
+.g-anim.play .g-node{opacity:1;transform:none}
+.g-anim .g-wire{stroke-dashoffset:var(--len);stroke-dasharray:var(--len);transition:stroke-dashoffset .7s ease-in-out}
+.g-anim.play .g-wire{stroke-dashoffset:0}
+@media (prefers-reduced-motion: reduce){
+  .g-anim .g-node,.g-anim .g-wire{transition:none!important;opacity:1!important;transform:none!important;stroke-dashoffset:0!important}
+  html{scroll-behavior:auto}
+}
+
+/* results */
+.charts{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+@media (max-width:900px){.charts{grid-template-columns:1fr}}
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 18px 12px}
+.chart h3{font-size:15.5px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.chart h3 small{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:11px;font-weight:400;color:var(--ink-3);letter-spacing:.04em}
+.chart svg{width:100%;height:auto;margin-top:8px;overflow:visible}
+.chart text{font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:12px;fill:var(--ink-2)}
+.chart text.val{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;fill:var(--ink-2);font-variant-numeric:tabular-nums}
+.chart text.ours{fill:var(--ink);font-weight:600}
+.chart .bar{fill:var(--bar-muted);transition:opacity .12s}
+.chart .bar.ours{fill:var(--brand)}
+.chart .row:hover .bar{opacity:.75}
+.chart line.base{stroke:var(--line-2);stroke-width:1}
+.chart-legend{display:flex;gap:16px;font-size:12px;color:var(--ink-3);margin-top:8px}
+.chart-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:6px;background:var(--bar-muted)}
+.chart-legend i.ours{background:var(--brand)}
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;line-height:1.45;padding:8px 10px;border-radius:6px;box-shadow:var(--shadow);opacity:0;transition:opacity .12s;max-width:260px}
+.tip.show{opacity:1}
+.tip b{font-weight:600}
+.results-lower{display:grid;grid-template-columns:1.25fr .75fr;gap:22px;margin-top:22px;align-items:start}
+@media (max-width:900px){.results-lower{grid-template-columns:1fr}}
+.metric-note{font-size:12.5px;color:var(--ink-3);margin-top:12px;line-height:1.6}
+details.fulltable summary{cursor:pointer;font-weight:500;color:var(--brand-ink);font-size:14.5px;list-style:none;display:inline-flex;align-items:center;gap:8px;padding:4px 0}
+details.fulltable summary::-webkit-details-marker{display:none}
+details.fulltable summary::before{content:"+";font-family:"IBM Plex Mono",monospace;width:18px;height:18px;border:1px solid var(--brand-line);border-radius:4px;display:inline-grid;place-items:center;font-size:13px}
+details.fulltable[open] summary::before{content:"−"}
+details.fulltable .table-scroll{margin-top:12px}
+.scale{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+.scale h3{font-size:18px;margin-bottom:4px}
+.scale p{margin:0 0 14px;color:var(--ink-2);font-size:14.5px}
+.pair{display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;font-size:13.5px}
+.pair .lab{color:var(--ink-2)}
+.pair .track{height:14px;background:var(--bar-track);border-radius:3px;position:relative;overflow:hidden}
+.pair .track i{position:absolute;left:0;top:0;bottom:0;background:var(--bar-muted);border-radius:0 3px 3px 0}
+.pair .track i.ours{background:var(--brand)}
+.pair .v{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.pair .v.ours{color:var(--brand-ink);font-weight:600}
+.pair .head{grid-column:1/-1;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-top:8px}
+.pair .head:first-child{margin-top:0}
+.limit{margin-top:22px;font-size:14px;color:var(--ink-2);padding:14px 18px;border-left:3px solid var(--rule);background:var(--surface)}
+.limit b{color:var(--ink)}
+
+/* qualitative */
+.qual-panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.qual-panel[hidden]{display:none}
+.qual-panel .instr{font-size:15px;color:var(--ink);margin:0 0 14px;padding:10px 14px;border-left:3px solid var(--brand);background:var(--surface-2);border-radius:0 8px 8px 0}
+.qual-panel .instr .eyebrow{display:block;margin-bottom:3px}
+.qual-panel .instr mark{background:transparent;color:var(--brand-ink);font-weight:600}
+.qual-panel button.zoom{all:unset;display:block;cursor:zoom-in;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.qual-panel button.zoom:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+.qual-panel .note{font-size:13.5px;color:var(--ink-3);margin:12px 0 0}
+.qual-panel .note b{color:var(--ink-2)}
+
+/* video */
+.video-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,.7fr);gap:22px;align-items:start}
+@media (max-width:900px){.video-grid{grid-template-columns:1fr}}
+.player{background:var(--canvas);border-radius:12px;overflow:hidden;border:1px solid var(--node-line)}
+.player video{width:100%;aspect-ratio:16/9;background:#000}
+.chapters{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 8px}
+.chapters h3{font-size:14px;padding:4px 10px 10px;color:var(--ink-2)}
+.chapters ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.chapters button{all:unset;display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:baseline;width:100%;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:14px;color:var(--ink)}
+.chapters button:hover{background:var(--surface-2)}
+.chapters button.now{background:var(--brand-soft);color:var(--brand-ink)}
+.chapters button:focus-visible{outline:2px solid var(--brand)}
+.chapters .t{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.chapters button.now .t{color:var(--brand-ink)}
+.yt{margin-top:12px;font-size:14px;color:var(--ink-3)}
+details.transcript{margin-top:14px}
+details.transcript summary{cursor:pointer;font-size:14px;color:var(--brand-ink);font-weight:500}
+details.transcript .body{margin-top:10px;columns:2;column-gap:28px;font-size:14px;color:var(--ink-2);line-height:1.6}
+@media (max-width:760px){details.transcript .body{columns:1}}
+details.transcript .body p{margin:0 0 .6em;break-inside:avoid}
+
+/* poster */
+.poster-grid{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:26px;align-items:start}
+@media (max-width:860px){.poster-grid{grid-template-columns:1fr}}
+button.poster-zoom{all:unset;display:block;cursor:zoom-in;border-radius:10px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);position:relative}
+button.poster-zoom:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+button.poster-zoom .hint{position:absolute;right:12px;bottom:12px;background:rgba(29,21,32,.78);color:#fff;font-size:12px;padding:5px 9px;border-radius:6px;font-family:"IBM Plex Mono",monospace}
+.poster-side{display:grid;gap:14px}
+.qr{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:8px;justify-items:center;text-align:center}
+.qr img{width:170px;height:170px;image-rendering:pixelated}
+.qr .eyebrow{color:#6b5f68}
+.qr a{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;color:#7A1450}
+
+/* bibtex / footer */
+.bib{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.bib pre{margin:0;font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}
+.bib .copy{position:absolute;top:10px;right:10px;padding:5px 10px;font-size:12px}
+footer{border-top:1px solid var(--line);margin-top:72px;padding:36px 0 56px;color:var(--ink-3);font-size:13.5px}
+footer p{margin:0 0 .6em;line-height:1.6;max-width:90ch}
+footer a{color:var(--ink-2)}
+
+/* lightbox */
+dialog.lb{border:0;padding:0;background:transparent;max-width:min(96vw,1800px);max-height:96vh;overflow:visible}
+dialog.lb::backdrop{background:rgba(20,14,18,.86)}
+dialog.lb img{max-width:96vw;max-height:92vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5);cursor:zoom-out;object-fit:contain}
+dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,.14);border:0;color:#fff;font-size:14px;padding:8px 12px;border-radius:8px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="logos">
+      <img class="insait" src="assets/logo_insait.png" alt="INSAIT">
+      <span class="adobe"><img src="assets/logo_adobe.png" alt=""> Adobe Research</span>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#demo">Demo</a>
+      <a href="#method">Method</a>
+      <a href="#examples">Examples</a>
+      <a href="#results">Results</a>
+      <a href="#talk">Talk</a>
+      <a href="#poster">Poster</a>
+      <a href="#bibtex">BibTeX</a>
+      <a class="cta" href="https://arxiv.org/abs/2607.15845" target="_blank" rel="noopener">arXiv ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero" id="demo">
+  <div class="wrap">
+    <div class="conf">
+      <img src="assets/logo_eccv.png" alt="ECCV 2026, Malmö">
+      <span class="eyebrow">ECCV 2026 · Malmö · 8–12 September · Poster</span>
+    </div>
+    <h1 class="title">Knowledge-Centric Agents for <em>Workflow Generation</em> in ComfyUI</h1>
+    <p class="thesis">A plain task description in. A complete, <b>executable ComfyUI workflow</b> out. Generating a workflow is not text-to-JSON: it is reasoning over knowledge, its structure, its hierarchy and its dynamics.</p>
+    <p class="authors">
+      <span class="names">Zhendong Li<sup>1</sup> · Lei Sun<sup>1 <span class="mail">✉</span></sup> · Ruibo Ming<sup>1</sup> · He Zhang<sup>2</sup> · Danda Pani Paudel<sup>1</sup> · Luc Van Gool<sup>1</sup> · Jinjin Gu<sup>1 <span class="mail">✉</span></sup></span><br>
+      <sup>1</sup>INSAIT, Sofia University “St. Kliment Ohridski” &nbsp;·&nbsp; <sup>2</sup>Adobe Research
+    </p>
+    <div class="actions">
+      <a class="btn primary" href="https://arxiv.org/abs/2607.15845" target="_blank" rel="noopener">arXiv <span class="tag" style="color:#f4d7e6">2607.15845</span></a>
+      <a class="btn" href="https://arxiv.org/pdf/2607.15845" target="_blank" rel="noopener">Paper PDF</a>
+      <!-- TODO: replace with the repository URL and remove the "soon" class -->
+      <a class="btn soon" id="codeBtn" href="CODE_URL" aria-disabled="true" onclick="return false">Code <span class="tag">coming soon</span></a>
+      <a class="btn" href="assets/poster.pdf" target="_blank" rel="noopener">Poster PDF</a>
+      <a class="btn" href="#talk">5-minute talk</a>
+    </div>
+
+    <div class="demo-video">
+      <video autoplay muted loop playsinline controls preload="metadata" poster="assets/demo_poster.jpg" aria-label="Demo: four real tasks, from instruction to executable ComfyUI workflow">
+        <source src="assets/demo.mp4" type="video/mp4">
+      </video>
+    </div>
+    <p class="caption">Four real test-set tasks, each run through the agent: instruction → strategy → skeleton pseudo-code → reconstructed ComfyUI graph → output. Every artefact shown is the agent's actual output.</p>
+
+    <div class="kpis">
+      <div class="kpi">
+        <span class="val">86.9%</span><span class="lab">Pass rate</span>
+        <span class="sub">Every generated workflow was executed by hand in ComfyUI and inspected by a person. Strongest prior agent (ComfyAgent): 36.4%.</span>
+        <div class="meter"><i class="base" style="width:36.4%"></i><i class="ours" style="width:86.9%;clip-path:inset(0 0 0 36.4%)"></i></div>
+      </div>
+      <div class="kpi">
+        <span class="val">61.1%</span><span class="lab">Resolve rate</span>
+        <span class="sub">Executes <em>and</em> fulfils the whole instruction. ComfyAgent: 29.4%.</span>
+        <div class="meter"><i class="base" style="width:29.4%"></i><i class="ours" style="width:61.1%;clip-path:inset(0 0 0 29.4%)"></i></div>
+      </div>
+      <div class="kpi">
+        <span class="val">152</span><span class="lab">Valid node types</span>
+        <span class="sub">Distinct, correctly used node types across the 30-task test set. Best baseline: 42, so 3.6× richer workflows.</span>
+        <div class="meter"><i class="base" style="width:27.6%"></i><i class="ours" style="width:100%;clip-path:inset(0 0 0 27.6%)"></i></div>
+        <div class="legend"><span><i style="background:var(--brand)"></i>Ours</span><span><i style="background:var(--bar-muted)"></i>Best baseline</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">The problem</span>
+      <h2>Why direct text-to-JSON generation fails</h2>
+      <p>A ComfyUI workflow is a directed graph of model and operation nodes, stored as JSON. Building a good one by hand takes real expertise. Prior agents ask a language model to write that JSON directly, and it breaks for two separate reasons.</p>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>Strategic level: the knowledge is tacit</h3>
+        <p>Workflow design is open-ended and experience-driven. Whether to segment, how to split branches, which control modules interact: designers rely on expertise that is simply not written down in ordinary text, so a model cannot pick it up from a text corpus.</p>
+      </div>
+      <div class="card">
+        <h3>Structural level: the graph is brittle</h3>
+        <p>Workflows are large discrete graphs. One misconnected link or one inconsistent parameter binding, and nothing runs. Token-by-token JSON generation has no notion of the topology it is supposed to produce.</p>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:22px">
+      <span class="big">0.0</span>
+      <p>GPT-5, prompted zero-shot, scores zero on every metric of our test set. It never produces a runnable graph.<small>Few-shot prompting, chain-of-thought, self-consistency and retrieval each help a little; the best of them passes 48% of tasks.</small></p>
+    </div>
+  </div>
+</section>
+
+<section id="method">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Our idea</span>
+      <h2>Model the knowledge, not the raw graph</h2>
+      <p>We make expert knowledge explicit as a hierarchy of abstraction levels, learn only the transitions that genuinely require reasoning, and generate by running that same hierarchy backwards.</p>
+    </div>
+    <div class="verbs">
+      <div class="verb v1"><h3>Invert</h3><p>Abstract 912 curated real workflows bottom-up into an explicit knowledge hierarchy: full pseudo-code, skeleton, reasoning, strategy, and finally the task a user would have written.</p></div>
+      <div class="verb v2"><h3>Inject</h3><p>Fine-tune exactly where reasoning is required: task to strategy, and strategy to skeleton. An auxiliary objective makes the model spell out why each design decision was taken.</p></div>
+      <div class="verb v3"><h3>Infer</h3><p>At test time, run the hierarchy top-down: learned planner and generator first, then a parameter filler and a rule-based reconstruction that emits a real, executable graph, with self-refinement after each learned stage.</p></div>
+    </div>
+    <div class="figure">
+      <img src="assets/method.png" alt="Framework overview: the knowledge inversion phase abstracts raw ComfyUI workflows bottom-up into full pseudo-code, skeleton pseudo-code, strategy reasoning, strategy description and task instruction; the inference phase mirrors it top-down with a fine-tuned strategy planner, a fine-tuned pseudo-code generator, a parameter filler and rule-based reconstruction." width="2400" height="2109" loading="lazy">
+    </div>
+    <p class="caption">Left: knowledge inversion, bottom-up over 912 curated real workflows. Right: inference, the mirror image. The two red stages are the only learned components.</p>
+    <div class="inject">
+      <div class="card">
+        <h3>Learned only where reasoning is needed</h3>
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>Transition</th><th>Why it is hard</th><th>Mechanism</th></tr></thead>
+          <tbody>
+            <tr><td>Task → Strategy</td><td>Tacit expert experience</td><td><span class="pill sft">SFT</span></td></tr>
+            <tr><td>Strategy → Skeleton</td><td>Compositional graph construction</td><td><span class="pill sft">SFT</span></td></tr>
+            <tr><td>Skeleton → Full code</td><td>Pattern-driven completion</td><td><span class="pill rule">rule-based · no training</span></td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="setup"><b>Setup.</b> Qwen3-14B with LoRA (r = 16, α = 32), trained on a single H200. GPT-5 is the underlying LLM for every method compared, including ours. Auxiliary objective: strategy reasoning extraction.</p>
+      </div>
+      <div class="card">
+        <h3>What inversion produces</h3>
+        <p>A purely rule-based step converts each raw workflow into full pseudo-code, keeping every module, link and parameter. A language model then abstracts the values away, leaving skeleton pseudo-code: just the functional topology.</p>
+        <p>From the skeleton we recover strategy reasoning, traces explaining why the graph is organised this way, why two controls are fused, why face detailing comes after denoising. That is summarised into a concise strategy, and finally into the instruction a user would have written.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="examples">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Inference on real tasks</span>
+      <h2>Running the hierarchy backwards</h2>
+      <p>Four test-set tasks, every artefact the agent's actual output. Pick a task; hover a line of pseudo-code to find its node in the graph. Wires carry ComfyUI's own type colours.</p>
+    </div>
+    <div class="tabs" role="tablist" id="exTabs"></div>
+    <div id="exPanels"></div>
+  </div>
+</section>
+
+<section id="results">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Results</span>
+      <h2>Richer graphs that actually run</h2>
+      <p>Our 30-task test set. All methods use GPT-5 as the underlying LLM. Pass and Resolve were scored by executing every generated workflow in ComfyUI by hand and inspecting the outcome.</p>
+    </div>
+    <div class="charts" id="charts"></div>
+    <div class="chart-legend" style="margin-top:14px"><span><i class="ours"></i>Ours (Qwen3-14B, hierarchical)</span><span><i></i>GPT-5 baselines</span></div>
+    <div class="results-lower">
+      <div>
+        <details class="fulltable">
+          <summary>All six metrics on the test set</summary>
+          <div class="table-scroll"><table id="fullTable"></table></div>
+          <p class="metric-note"><b>VND</b> distinct valid node types · <b>NodeComp / LinkComp</b> share of nodes correctly instantiated / correctly connected · <b>TaskCons</b> GPT-judged task fulfilment · <b>Pass</b> executes in ComfyUI · <b>Resolve</b> executes and fulfils the task. All in %, except VND.</p>
+        </details>
+        <h3 style="font-size:18px;margin:26px 0 10px">Generalisation to external benchmarks</h3>
+        <div class="table-scroll"><table id="extTable"></table></div>
+      </div>
+      <div class="scale">
+        <h3>Hierarchy beats scale</h3>
+        <p>A control experiment: train a larger Qwen3-32B end-to-end, straight from instruction to pseudo-code, with no intermediate strategy level.</p>
+        <div class="pair" id="scalePair"></div>
+      </div>
+    </div>
+    <p class="limit"><b>Limitation.</b> When a task needs a rare node type, the model tends to substitute a common one, which can break functional dependencies. We attribute this to limited coverage of rare nodes in the 912 training workflows; a larger, more diverse collection and reinforcement-style optimisation are the natural next steps.</p>
+  </div>
+</section>
+
+<section id="qual">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Qualitative comparison</span>
+      <h2>Same instruction, every method</h2>
+      <p>Baselines either fail to execute at all, or silently drop part of the instruction. Click a strip to enlarge it.</p>
+    </div>
+    <div class="tabs" role="tablist" id="qualTabs"></div>
+    <div id="qualPanels"></div>
+  </div>
+</section>
+
+<section id="talk">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Talk</span>
+      <h2>The paper in five minutes</h2>
+      <p>Narrated overview with English subtitles. Use the chapters to jump around.</p>
+    </div>
+    <div class="video-grid">
+      <div>
+        <div class="player">
+          <video id="talkVideo" controls preload="metadata" playsinline poster="assets/talk_poster.jpg">
+            <source src="assets/talk_720p.mp4" type="video/mp4">
+            <track kind="subtitles" src="assets/talk.vtt" srclang="en" label="English" default>
+          </video>
+        </div>
+        <!-- TODO: set YOUTUBE_URL in the script below to show a YouTube link here -->
+        <p class="yt" id="ytLine" hidden>Also on <a id="ytLink" href="#" target="_blank" rel="noopener">YouTube ↗</a></p>
+        <details class="transcript">
+          <summary>Read the transcript</summary>
+          <div class="body" id="transcript"></div>
+        </details>
+      </div>
+      <div class="chapters">
+        <h3>Chapters</h3>
+        <ol id="chapters"></ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="poster">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Poster</span>
+      <h2>Find us at ECCV 2026 in Malmö</h2>
+      <p>The poster on one page. Click it to view at full resolution, or download the PDF.</p>
+    </div>
+    <div class="poster-grid">
+      <button class="poster-zoom" type="button" id="posterZoom" aria-label="Open the poster at full resolution">
+        <img src="assets/poster_1280.jpg" alt="ECCV 2026 poster: Knowledge-Centric Agents for Workflow Generation in ComfyUI" width="1280" height="640" loading="lazy">
+        <span class="hint">click to zoom</span>
+      </button>
+      <div class="poster-side">
+        <a class="btn" href="assets/poster.pdf" target="_blank" rel="noopener">Download poster PDF</a>
+        <div class="qr">
+          <span class="eyebrow">Paper on arXiv</span>
+          <img src="assets/qr_arxiv.png" alt="QR code linking to arxiv.org/abs/2607.15845" width="170" height="170">
+          <a href="https://arxiv.org/abs/2607.15845" target="_blank" rel="noopener">arxiv.org/abs/2607.15845</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="bibtex">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Citation</span>
+      <h2>BibTeX</h2>
+    </div>
+    <div class="bib">
+      <button class="btn copy" type="button" id="copyBib">Copy</button>
+      <pre id="bibtexText">@inproceedings{li2026knowledgecentric,
+  title     = {Knowledge-Centric Agents for Workflow Generation in ComfyUI},
+  author    = {Li, Zhendong and Sun, Lei and Ming, Ruibo and Zhang, He and Paudel, Danda Pani and Van Gool, Luc and Gu, Jinjin},
+  booktitle = {European Conference on Computer Vision (ECCV)},
+  year      = {2026}
+}</pre>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><b style="color:var(--ink)">Contact.</b> Corresponding authors: Lei Sun and Jinjin Gu · <span class="mono">{lei.sun, jinjin.gu}@insait.ai</span></p>
+    <p>INSAIT, Sofia University “St. Kliment Ohridski” · Adobe Research. This research was partially funded by the Ministry of Education and Science of Bulgaria through support for INSAIT as part of the Bulgarian National Roadmap for Research Infrastructure, and partially supported by Adobe Research.</p>
+    <p>ComfyUI is a project of comfyanonymous and contributors. Node and wire colours on this page follow ComfyUI's defaults.</p>
+  </div>
+</footer>
+
+<dialog class="lb" id="lightbox"><button class="close" type="button" id="lbClose">Close ✕</button><img id="lbImg" alt=""></dialog>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+/* ---------------- config (fill in when available) ---------------- */
+const YOUTUBE_URL = "";   // e.g. "https://youtu.be/XXXXXXXX"
+if (YOUTUBE_URL){ const l = document.getElementById('ytLink'); l.href = YOUTUBE_URL; document.getElementById('ytLine').hidden = false; }
+
+/* ---------------- data ---------------- */
+const EXAMPLES = [{"idx": 90, "short": "Text-to-image + 2× upscale", "question": "Create an image from a text description using my custom style/character preset, then automatically upscale it to a much higher resolution with prompt-guided detail enhancement—using a positive prompt to add desired details and a negative prompt to avoid unwanted elements—and save the final high-quality result.", "strategy": "Use a two-stage, text-to-image then upscale-and-refine pipeline. First, encode the user’s prompt with CLIP and guide a diffusion model through a guided sampler to synthesize an image in latent space, decoding it with the paired VAE. Second, run a diffusion-guided upscaling pass that combines a learned super-resolution model with the same diffusion backbone: enlarge the image while using positive and negative CLIP conditioning to preserve composition and purge artifacts. …", "code": [["LATENT_5 = EmptyLatentImage()", 5], ["MODEL_1, CLIP_1, VAE_1 = CheckpointLoaderSimple()", 1], ["UPSCALE_MODEL_4 = UpscaleModelLoader()", 4], ["CONDITIONING_3 = CLIPTextEncode(clip=CLIP_1)", 3], ["CONDITIONING_2 = CLIPTextEncode(clip=CLIP_1)", 2], ["LATENT_6 = KSamplerAdvanced(model=MODEL_1, positive=CONDITIONING_2, negative=CONDITIONING_3, latent_image=LATENT_5)", 6], ["IMAGE_7 = VAEDecode(samples=LATENT_6, vae=VAE_1)", 7], ["IMAGE_8 = UltimateSDUpscale(image=IMAGE_7, model=MODEL_1, positive=CONDITIONING_2, negative=CONDITIONING_3, upscale_model=UPSCALE_MODEL_4, vae=VAE_1)", 8], ["_ = easy imageSave(images=IMAGE_8)", 9]], "graph": {"nodes": [{"id": 5, "type": "EmptyLatentImage", "order": 0, "inputs": [], "outputs": [["LATENT", "LATENT"]], "meta": ["512 × 512 · batch 1"]}, {"id": 9, "type": "easy imageSave", "order": 8, "inputs": [["images", "IMAGE"]], "outputs": [], "meta": ["filename prefix: ComfyUI"], "image": "assets/ex_90.jpg"}, {"id": 7, "type": "VAEDecode", "order": 6, "inputs": [["samples", "LATENT"], ["vae", "VAE"]], "outputs": [["IMAGE", "IMAGE"]], "meta": []}, {"id": 1, "type": "CheckpointLoaderSimple", "order": 1, "inputs": [], "outputs": [["MODEL", "MODEL"], ["CLIP", "CLIP"], ["VAE", "VAE"]], "meta": ["dreamshaper_8.safetensors"]}, {"id": 6, "type": "KSamplerAdvanced", "order": 5, "inputs": [["model", "MODEL"], ["positive", "CONDITIONING"], ["negative", "CONDITIONING"], ["latent_image", "LATENT"]], "outputs": [["LATENT", "LATENT"]], "meta": ["30 steps · cfg 7", "euler · simple"]}, {"id": 8, "type": "UltimateSDUpscale", "order": 7, "inputs": [["image", "IMAGE"], ["model", "MODEL"], ["positive", "CONDITIONING"], ["negative", "CONDITIONING"], ["vae", "VAE"], ["upscale_model", "UPSCALE_MODEL"]], "outputs": [["IMAGE", "IMAGE"]], "meta": ["upscale ×2 · denoise 0.4", "tile 1024 × 1024"]}, {"id": 4, "type": "UpscaleModelLoader", "order": 2, "inputs": [], "outputs": [["UPSCALE_MODEL", "UPSCALE_MODEL"]], "meta": ["BSRGAN.pth"]}, {"id": 2, "type": "CLIPTextEncode", "order": 4, "inputs": [["clip", "CLIP"]], "outputs": [["CONDITIONING", "CONDITIONING"]], "meta": ["masterpiece, best quality,", "ultra-detailed, steampunk…"]}, {"id": 3, "type": "CLIPTextEncode", "order": 3, "inputs": [["clip", "CLIP"]], "outputs": [["CONDITIONING", "CONDITIONING"]], "meta": ["low quality, blurry, bad", "perspective, broken geometry,…"]}], "links": [[1, 1, 2, 0, "CLIP"], [1, 1, 3, 0, "CLIP"], [1, 0, 6, 0, "MODEL"], [2, 0, 6, 1, "CONDITIONING"], [3, 0, 6, 2, "CONDITIONING"], [5, 0, 6, 3, "LATENT"], [6, 0, 7, 0, "LATENT"], [1, 2, 7, 1, "VAE"], [7, 0, 8, 0, "IMAGE"], [1, 0, 8, 1, "MODEL"], [2, 0, 8, 2, "CONDITIONING"], [3, 0, 8, 3, "CONDITIONING"], [4, 0, 8, 5, "UPSCALE_MODEL"], [8, 0, 9, 0, "IMAGE"], [1, 2, 8, 4, "VAE"]]}, "out": "assets/ex_90.jpg", "inp": null, "outLabel": "output · 1024 × 1024", "frame": null, "note": "Text-to-image with a prompt-guided two-stage upscale: a 512 × 512 latent is sampled, decoded, then enlarged 2× by UltimateSDUpscale with the same model and prompts. Graph and parameters are read from the workflow JSON the agent produced; the skeleton pseudo-code is that JSON written back in the paper's notation."}, {"idx": 448, "short": "LoRA style preset + upscale", "question": "I want to create an image from my text prompt, apply my chosen style/character presets to control the look, and then upscale it with detail enhancement to a crisp, high-resolution final result suitable for large displays or print.", "strategy": "Leverage a LoRA-augmented diffusion backbone to generate an image directly from text, then upscale it with a diffusion-guided super-resolution step that fuses a dedicated upscaler with the same model and prompts. I encode positive and negative prompts using CLIP, stack multiple LoRAs onto both the UNet and CLIP to align style and semantics, sample a base image in latent space, decode with a VAE, and finally enforce structure and detail via a tile-aware, diffusion-assisted upscaling stage. …", "code": [["LATENT_1 = EmptyLatentImage()", 1], ["VAE_2 = VAELoader()", 2], ["UPSCALE_MODEL_3 = UpscaleModelLoader()", 3], ["MODEL_4, CLIP_4, VAE_4 = CheckpointLoaderSimple()", 4], ["MODEL_7, CLIP_7 = LoraLoader(model=MODEL_4, clip=CLIP_4)", 7], ["CONDITIONING_9 = CLIPTextEncode(clip=CLIP_7)", 9], ["CONDITIONING_8 = CLIPTextEncode(clip=CLIP_7)", 8], ["LATENT_10 = KSampler(model=MODEL_7, positive=CONDITIONING_8, negative=CONDITIONING_9, latent_image=LATENT_1)", 10], ["IMAGE_11 = VAEDecode(samples=LATENT_10, vae=VAE_2)", 11], ["IMAGE_13 = UltimateSDUpscale(image=IMAGE_11, model=MODEL_7, positive=CONDITIONING_8, negative=CONDITIONING_9, vae=VAE_2, upscale_model=UPSCALE_MODEL_3)", 13], ["_ = PreviewImage(images=IMAGE_11)", 12], ["_ = SaveImage(images=IMAGE_13)", 14]], "graph": {"nodes": [{"id": 11, "type": "VAEDecode", "order": 8, "inputs": [["samples", "LATENT"], ["vae", "VAE"]], "outputs": [["IMAGE", "IMAGE"]], "meta": []}, {"id": 1, "type": "EmptyLatentImage", "order": 0, "inputs": [], "outputs": [["LATENT", "LATENT"]], "meta": ["512 × 512 · batch 1"]}, {"id": 7, "type": "LoraLoader", "order": 4, "inputs": [["model", "MODEL"], ["clip", "CLIP"]], "outputs": [["MODEL", "MODEL"], ["CLIP", "CLIP"]], "meta": ["realisticVisionV5_v10.safetensors", "strength model 1 · clip 1"]}, {"id": 13, "type": "UltimateSDUpscale", "order": 9, "inputs": [["image", "IMAGE"], ["model", "MODEL"], ["positive", "CONDITIONING"], ["negative", "CONDITIONING"], ["vae", "VAE"], ["upscale_model", "UPSCALE_MODEL"]], "outputs": [["IMAGE", "IMAGE"]], "meta": ["upscale ×2 · denoise 0.2", "tile 512 × 512"]}, {"id": 14, "type": "SaveImage", "order": 11, "inputs": [["images", "IMAGE"]], "outputs": [], "meta": ["filename prefix: ComfyUI"], "image": "assets/ex_448.jpg"}, {"id": 12, "type": "PreviewImage", "order": 10, "inputs": [["images", "IMAGE"]], "outputs": [], "meta": []}, {"id": 9, "type": "CLIPTextEncode", "order": 5, "inputs": [["clip", "CLIP"]], "outputs": [["CONDITIONING", "CONDITIONING"]], "meta": []}, {"id": 8, "type": "CLIPTextEncode", "order": 6, "inputs": [["clip", "CLIP"]], "outputs": [["CONDITIONING", "CONDITIONING"]], "meta": []}, {"id": 2, "type": "VAELoader", "order": 1, "inputs": [], "outputs": [["VAE", "VAE"]], "meta": ["1-5.safetensors"]}, {"id": 3, "type": "UpscaleModelLoader", "order": 2, "inputs": [], "outputs": [["UPSCALE_MODEL", "UPSCALE_MODEL"]], "meta": ["BSRGAN.pth"]}, {"id": 4, "type": "CheckpointLoaderSimple", "order": 3, "inputs": [], "outputs": [["MODEL", "MODEL"], ["CLIP", "CLIP"], ["VAE", "VAE"]], "meta": ["dreamshaper_8.safetensors"]}, {"id": 10, "type": "KSampler", "order": 7, "inputs": [["model", "MODEL"], ["positive", "CONDITIONING"], ["negative", "CONDITIONING"], ["latent_image", "LATENT"]], "outputs": [["LATENT", "LATENT"]], "meta": ["20 steps · cfg 5 · denoise 1", "dpmpp_sde_gpu · karras"]}], "links": [[7, 1, 8, 0, "CLIP"], [7, 1, 9, 0, "CLIP"], [7, 0, 10, 0, "MODEL"], [8, 0, 10, 1, "CONDITIONING"], [9, 0, 10, 2, "CONDITIONING"], [1, 0, 10, 3, "LATENT"], [10, 0, 11, 0, "LATENT"], [2, 0, 11, 1, "VAE"], [11, 0, 12, 0, "IMAGE"], [11, 0, 13, 0, "IMAGE"], [7, 0, 13, 1, "MODEL"], [8, 0, 13, 2, "CONDITIONING"], [9, 0, 13, 3, "CONDITIONING"], [2, 0, 13, 4, "VAE"], [3, 0, 13, 5, "UPSCALE_MODEL"], [13, 0, 14, 0, "IMAGE"], [4, 0, 7, 0, "MODEL"], [4, 1, 7, 1, "CLIP"]]}, "out": "assets/ex_448.jpg", "inp": null, "outLabel": "output · 1024 × 1024", "frame": null, "note": "A style preset is applied as a LoRA on both the UNet and CLIP before sampling, then the decoded image is upscaled 2× with tile-aware diffusion. Prompt widgets are hidden here; everything else is the agent's JSON."}, {"idx": 300, "short": "Outpainting", "question": "Extend my image outward (outpaint) by expanding the canvas and filling only the masked borders with new, coherent content that matches the original scene’s style, color, and lighting. Use my text prompt (with positives and negatives) to guide what appears in the extended areas, keep the original subject intact, and blend the new regions seamlessly.", "strategy": "Expand the canvas of the input image and fill only the mask-defined region using a text-guided, image-to-image diffusion pipeline. I encode positive and negative prompts with CLIP to establish intent and constraints, enlarge the image with a padded canvas to define where new content is allowed, and convert the mask into a latent noise mask so only targeted areas are resynthesized. I initialize a diffusion sampler with a VAE-consistent latent representation of the padded image, …", "code": [["VAE_7 = VAELoader()", 7], ["MODEL_1, CLIP_1, VAE_1 = CheckpointLoaderSimple()", 1], ["STRING_2 = Text()", 2], ["STRING_3 = Text()", 3], ["IMAGE_6, MASK_6 = LoadImage()", 6], ["CONDITIONING_4 = CLIPTextEncode(clip=CLIP_1, text=STRING_2)", 4], ["CONDITIONING_5 = CLIPTextEncode(clip=CLIP_1, text=STRING_3)", 5], ["IMAGE_15 = ImageScale(image=IMAGE_6)", 15], ["IMAGE_9, MASK_9 = ImagePadForOutpaint(image=IMAGE_15)", 9], ["LATENT_10 = VAEEncode(pixels=IMAGE_9, vae=VAE_7)", 10], ["LATENT_11 = SetLatentNoiseMask(samples=LATENT_10, mask=MASK_9)", 11], ["LATENT_12 = KSampler(model=MODEL_1, positive=CONDITIONING_4, negative=CONDITIONING_5, latent_image=LATENT_11)", 12], ["IMAGE_13 = VAEDecode(samples=LATENT_12, vae=VAE_7)", 13], ["_ = PreviewImage(images=IMAGE_13)", 14]], "graph": {"nodes": [{"id": 7, "type": "VAELoader", "order": 0, "inputs": [], "outputs": [["VAE", "VAE"]], "meta": ["1-5.safetensors"]}, {"id": 13, "type": "VAEDecode", "order": 12, "inputs": [["samples", "LATENT"], ["vae", "VAE"]], "outputs": [["IMAGE", "IMAGE"]], "meta": []}, {"id": 14, "type": "PreviewImage", "order": 13, "inputs": [["images", "IMAGE"]], "outputs": [], "meta": [], "image": "assets/ex_300.jpg"}, {"id": 1, "type": "CheckpointLoaderSimple", "order": 1, "inputs": [], "outputs": [["MODEL", "MODEL"], ["CLIP", "CLIP"], ["VAE", "VAE"]], "meta": ["dreamshaper_8.safetensors"]}, {"id": 2, "type": "Text", "order": 2, "inputs": [], "outputs": [["string", "STRING"]], "meta": ["a beautiful realistic portrait", "of a woman standing outdoors,…"]}, {"id": 3, "type": "Text", "order": 3, "inputs": [], "outputs": [["string", "STRING"]], "meta": ["lowres, blurry, bad anatomy,", "disfigured, extra limbs,…"]}, {"id": 12, "type": "KSampler", "order": 11, "inputs": [["model", "MODEL"], ["positive", "CONDITIONING"], ["negative", "CONDITIONING"], ["latent_image", "LATENT"]], "outputs": [["LATENT", "LATENT"]], "meta": ["30 steps · cfg 7 · denoise 1", "euler · simple"]}, {"id": 6, "type": "LoadImage", "order": 4, "inputs": [], "outputs": [["IMAGE", "IMAGE"], ["MASK", "MASK"]], "meta": ["example.png"]}, {"id": 9, "type": "ImagePadForOutpaint", "order": 8, "inputs": [["image", "IMAGE"]], "outputs": [["IMAGE", "IMAGE"], ["MASK", "MASK"]], "meta": ["pad 128 / 128 / 128 / 128 · feather 40"]}, {"id": 10, "type": "VAEEncode", "order": 9, "inputs": [["pixels", "IMAGE"], ["vae", "VAE"]], "outputs": [["LATENT", "LATENT"]], "meta": []}, {"id": 11, "type": "SetLatentNoiseMask", "order": 10, "inputs": [["samples", "LATENT"], ["mask", "MASK"]], "outputs": [["LATENT", "LATENT"]], "meta": []}, {"id": 15, "type": "ImageScale", "order": 7, "inputs": [["image", "IMAGE"]], "outputs": [["IMAGE", "IMAGE"]], "meta": ["nearest-exact"]}, {"id": 4, "type": "CLIPTextEncode", "order": 5, "inputs": [["clip", "CLIP"], ["text", "STRING"]], "outputs": [["CONDITIONING", "CONDITIONING"]], "meta": []}, {"id": 5, "type": "CLIPTextEncode", "order": 6, "inputs": [["clip", "CLIP"], ["text", "STRING"]], "outputs": [["CONDITIONING", "CONDITIONING"]], "meta": []}], "links": [[1, 1, 4, 0, "CLIP"], [2, 0, 4, 1, "*"], [1, 1, 5, 0, "CLIP"], [3, 0, 5, 1, "*"], [9, 0, 10, 0, "IMAGE"], [7, 0, 10, 1, "VAE"], [10, 0, 11, 0, "LATENT"], [9, 1, 11, 1, "MASK"], [1, 0, 12, 0, "MODEL"], [4, 0, 12, 1, "CONDITIONING"], [5, 0, 12, 2, "CONDITIONING"], [11, 0, 12, 3, "LATENT"], [12, 0, 13, 0, "LATENT"], [7, 0, 13, 1, "VAE"], [13, 0, 14, 0, "IMAGE"], [6, 0, 15, 0, "IMAGE"], [15, 0, 9, 0, "IMAGE"]]}, "out": "assets/ex_300.jpg", "inp": null, "outLabel": "output · 1536 × 1536 · dashed = original canvas", "frame": 0.08333333333333333, "note": "The canvas is padded by 128 px on every side, the padded image is VAE-encoded, the pad becomes a latent noise mask, and only the border is resynthesised under the text conditioning. The dashed frame marks the original 1280 × 1280 canvas."}, {"idx": 85, "short": "Restore + stylise a blurry photo", "question": "Transform my input photo into a higher-quality, stylized version that still looks like the same scene: auto-generate a descriptive prompt from the photo, use the original image and its edge structure to preserve layout and shapes, enhance facial details, and then match the final colors back to the source image for a natural, consistent result.", "strategy": "I construct an image-to-image diffusion pipeline that preserves the source composition while re-rendering it at higher creative fidelity. I start by resizing the input and extracting a Canny edge map to serve as a structural anchor. I derive a prompt from an automatic image-tagging model and encode it with CLIP for positive conditioning, pairing it with a neutral negative embedding. I load a latent diffusion model with its VAE and clip the input image’s resolution to the model’s maximum, …", "code": [["MODEL_1, CLIP_1, VAE_1 = CheckpointLoaderSimple()", 1], ["CONDITIONING_4 = CLIPTextEncode(clip=CLIP_1, text=\"\")", 2], ["CONTROL_NET_7 = ControlNetLoader()", 3], ["BBOX_DETECTOR_9, SEGM_DETECTOR_9 = UltralyticsDetectorProvider()", 4], ["SAM_MODEL_11 = SAMLoader()", 5], ["IMAGE_13, MASK_33 = LoadImage()", 6], ["IMAGE_GEN_WIDTH_3, IMAGE_GEN_HEIGHT_3 = ImageGenResolutionFromImage(image=IMAGE_13)", 7], ["STRING_40 = WD14Tagger|pysssss(image=IMAGE_13)", 8], ["CONDITIONING_6 = CLIPTextEncode(clip=CLIP_1, text=STRING_40)", 9], ["IMAGE_2 = ImageScale(image=IMAGE_13, width=IMAGE_GEN_WIDTH_3, height=IMAGE_GEN_HEIGHT_3)", 10], ["IMAGE_3 = CannyEdgePreprocessor(image=IMAGE_2)", 11], ["LATENT_6 = VAEEncode(pixels=IMAGE_2, vae=VAE_1)", 12], ["positive_8 = ControlNetApply(conditioning=CONDITIONING_6, control_net=CONTROL_NET_7, image=IMAGE_3)", 13], ["negative_8 = ControlNetApply(conditioning=CONDITIONING_4, control_net=CONTROL_NET_7, image=IMAGE_3)", 14], ["LATENT_7 = KSampler(model=MODEL_1, positive=positive_8, negative=negative_8, latent_image=LATENT_6)", 15], ["IMAGE_4 = VAEDecode(samples=LATENT_7, vae=VAE_1)", 16], ["image_10, cropped_refined_10, cropped_enhanced_alpha_10, mask_10, detailer_pipe_10, cnet_images_10 = FaceDetailer(image=IMAGE_4, model=MODEL_1, clip=CLIP_1, vae=VAE_1, positive=CONDITIONING_6, negative=CONDITIONING_4, bbox_detector=BBOX_DETECTOR_9, sam_model_opt=SAM_MODEL_11)", 17], ["IMAGE_5 = ColorMatch(image_ref=IMAGE_13, image_target=image_10)", 18], ["_ = PreviewImage(images=IMAGE_5)", 19]], "graph": {"nodes": [{"id": 1, "type": "CheckpointLoaderSimple", "order": 1, "inputs": [], "outputs": [["MODEL", "MODEL"], ["CLIP", "CLIP"], ["VAE", "VAE"]], "meta": []}, {"id": 2, "type": "CLIPTextEncode", "order": 2, "inputs": [["clip", "CLIP"]], "outputs": [["CONDITIONING", "CONDITIONING"]], "meta": []}, {"id": 3, "type": "ControlNetLoader", "order": 3, "inputs": [], "outputs": [["CONTROL_NET", "CONTROL_NET"]], "meta": []}, {"id": 4, "type": "UltralyticsDetectorProvider", "order": 4, "inputs": [], "outputs": [["BBOX_DETECTOR", "BBOX_DETECTOR"], ["SEGM_DETECTOR", "SEGM_DETECTOR"]], "meta": []}, {"id": 5, "type": "SAMLoader", "order": 5, "inputs": [], "outputs": [["SAM_MODEL", "SAM_MODEL"]], "meta": []}, {"id": 6, "type": "LoadImage", "order": 6, "inputs": [], "outputs": [["IMAGE", "IMAGE"], ["MASK", "MASK"]], "meta": []}, {"id": 7, "type": "ImageGenResolutionFromImage", "order": 7, "inputs": [["image", "IMAGE"]], "outputs": [["IMAGE_GEN_WIDTH", "INT"], ["IMAGE_GEN_HEIGHT", "INT"]], "meta": []}, {"id": 8, "type": "WD14Tagger|pysssss", "order": 8, "inputs": [["image", "IMAGE"]], "outputs": [["STRING", "STRING"]], "meta": []}, {"id": 9, "type": "CLIPTextEncode", "order": 9, "inputs": [["clip", "CLIP"], ["text", "STRING"]], "outputs": [["CONDITIONING", "CONDITIONING"]], "meta": []}, {"id": 10, "type": "ImageScale", "order": 10, "inputs": [["image", "IMAGE"], ["width", "INT"], ["height", "INT"]], "outputs": [["IMAGE", "IMAGE"]], "meta": []}, {"id": 11, "type": "CannyEdgePreprocessor", "order": 11, "inputs": [["image", "IMAGE"]], "outputs": [["IMAGE", "IMAGE"]], "meta": []}, {"id": 12, "type": "VAEEncode", "order": 12, "inputs": [["pixels", "IMAGE"], ["vae", "VAE"]], "outputs": [["LATENT", "LATENT"]], "meta": []}, {"id": 13, "type": "ControlNetApply", "order": 13, "inputs": [["conditioning", "CONDITIONING"], ["control_net", "CONTROL_NET"], ["image", "IMAGE"]], "outputs": [["positive", "CONDITIONING"]], "meta": []}, {"id": 14, "type": "ControlNetApply", "order": 14, "inputs": [["conditioning", "CONDITIONING"], ["control_net", "CONTROL_NET"], ["image", "IMAGE"]], "outputs": [["negative", "CONDITIONING"]], "meta": []}, {"id": 15, "type": "KSampler", "order": 15, "inputs": [["model", "MODEL"], ["positive", "CONDITIONING"], ["negative", "CONDITIONING"], ["latent_image", "LATENT"]], "outputs": [["LATENT", "LATENT"]], "meta": []}, {"id": 16, "type": "VAEDecode", "order": 16, "inputs": [["samples", "LATENT"], ["vae", "VAE"]], "outputs": [["IMAGE", "IMAGE"]], "meta": []}, {"id": 17, "type": "FaceDetailer", "order": 17, "inputs": [["image", "IMAGE"], ["model", "MODEL"], ["clip", "CLIP"], ["vae", "VAE"], ["positive", "CONDITIONING"], ["negative", "CONDITIONING"], ["bbox_detector", "BBOX_DETECTOR"], ["sam_model_opt", "SAM_MODEL"]], "outputs": [["image", "IMAGE"], ["cropped_refined", "IMAGE"], ["cropped_enhanced_alpha", "IMAGE"], ["mask", "MASK"], ["detailer_pipe", "DETAILER_PIPE"], ["cnet_images", "IMAGE"]], "meta": []}, {"id": 18, "type": "ColorMatch", "order": 18, "inputs": [["image_ref", "IMAGE"], ["image_target", "IMAGE"]], "outputs": [["IMAGE", "IMAGE"]], "meta": []}, {"id": 19, "type": "PreviewImage", "order": 19, "inputs": [["images", "IMAGE"]], "outputs": [], "meta": [], "image": "assets/ex_85.jpg"}], "links": [[1, 1, 2, 0, "CLIP"], [6, 0, 7, 0, "IMAGE"], [6, 0, 8, 0, "IMAGE"], [1, 1, 9, 0, "CLIP"], [8, 0, 9, 1, "STRING"], [6, 0, 10, 0, "IMAGE"], [7, 0, 10, 1, "INT"], [7, 1, 10, 2, "INT"], [10, 0, 11, 0, "IMAGE"], [10, 0, 12, 0, "IMAGE"], [1, 2, 12, 1, "VAE"], [9, 0, 13, 0, "CONDITIONING"], [3, 0, 13, 1, "CONTROL_NET"], [11, 0, 13, 2, "IMAGE"], [2, 0, 14, 0, "CONDITIONING"], [3, 0, 14, 1, "CONTROL_NET"], [11, 0, 14, 2, "IMAGE"], [1, 0, 15, 0, "MODEL"], [13, 0, 15, 1, "CONDITIONING"], [14, 0, 15, 2, "CONDITIONING"], [12, 0, 15, 3, "LATENT"], [15, 0, 16, 0, "LATENT"], [1, 2, 16, 1, "VAE"], [16, 0, 17, 0, "IMAGE"], [1, 0, 17, 1, "MODEL"], [1, 1, 17, 2, "CLIP"], [1, 2, 17, 3, "VAE"], [9, 0, 17, 4, "CONDITIONING"], [2, 0, 17, 5, "CONDITIONING"], [4, 0, 17, 6, "BBOX_DETECTOR"], [5, 0, 17, 7, "SAM_MODEL"], [6, 0, 18, 0, "IMAGE"], [17, 0, 18, 1, "IMAGE"], [18, 0, 19, 0, "IMAGE"]]}, "out": "assets/ex_85.jpg", "inp": "assets/ex_85_input.jpg", "outLabel": "output · restored, face-detailed, colour-matched", "frame": null, "note": "The richest of the four: an automatic tagger writes the prompt, a Canny edge map anchors the layout through ControlNet, a face detailer segments and refines the face, and the colours are matched back to the source. No executed JSON was kept for this task, so the graph is parsed directly from the agent's skeleton pseudo-code; parameters are therefore not shown."}];
+const CUES = [["Introduction", "Welcome. This is Knowledge-Centric Agents for Workflow Generation in ComfyUI, our ECCV 2026 paper from INSAIT at Sofia University, together with Adobe Research. We study how to build an agent that turns a plain task description into a complete, runnable ComfyUI workflow."], ["The task", "ComfyUI is a node-based system where an image generation pipeline is built as a directed graph. Every node is a model or an operation, and the entire workflow is stored as a JSON file. Building a good one by hand takes real expertise. So: can an agent do it for us? Given an instruction like, stylize this photo, enhance the facial details, and match the colours back to the original, our agent derives a high-level strategy, composes the corresponding ComfyUI graph, and then actually executes it to produce the final image."], ["Why direct text-to-JSON fails", "Most prior work treats this as direct text-to-JSON generation, and that struggles for two distinct reasons. At the strategic level, workflow design is open-ended and experience-driven. Whether to segment, how to split branches, which control modules interact: designers rely on tacit expertise that is simply not present in ordinary text. At the structural level, workflows are large discrete graphs and JSON is brittle. One misconnected link, and nothing runs. The evidence is stark. GPT-5 prompted zero-shot scores zero on every metric."], ["Our idea", "Our claim is that workflow generation requires modelling knowledge itself: its structure, its hierarchy, and its reasoning dynamics. We do this in three steps. We invert knowledge out of large collections of real workflows into an explicit hierarchy. We inject the parts that genuinely require reasoning into a language model. And at test time we infer, by running that hierarchy backwards."], ["Knowledge inversion", "Inversion proceeds bottom-up over nine hundred and twelve curated real workflows. A purely rule-based step first converts each raw workflow into full pseudo-code, keeping every module, link and parameter. A language model then abstracts away the values, leaving skeleton pseudo-code: just the functional topology. Next we recover strategy reasoning, traces explaining why the graph is organised this way, why two controls are fused, why face detailing comes after denoising. That is summarised into a concise strategy description, and finally into the task instruction that a user would have written."], ["Knowledge injection", "Not every level needs learning. We fine-tune exactly where reasoning is required: task to strategy, which carries the tacit expertise, and strategy to skeleton, which needs compositional graph construction. Restoring parameters is pattern-driven, so it stays rule-based. An auxiliary objective makes the model spell out why each decision was taken. The backbone is Qwen3-14B with LoRA, trained on a single H200."], ["Knowledge inference", "Inference is the mirror image. A high-level strategy planner turns the instruction into a processing plan. A pseudo-code generator turns that plan into a skeleton. A pretrained model fills in parameters and bindings from context. And a rule-based reconstruction step converts the result into a real, executable ComfyUI graph. After each learned stage, the model re-reads and refines its own output."], ["Results", "On our thirty-task test set the gains are large. Valid node diversity reaches one hundred and fifty-two, more than three and a half times the best baseline, so the workflows are genuinely richer. Node and link completeness exceed ninety-six and ninety-eight percent. And most importantly, execution: every workflow was run manually in ComfyUI and inspected by a human. Our pass rate is eighty-seven percent, against thirty-six for ComfyAgent, and the resolve rate doubles."], ["Generalisation and ablation", "These gains carry over. On ComfyBench and on FlowBench we lead on both structure and execution. And one control experiment worth highlighting: training Qwen3-32B end-to-end, straight from instruction to pseudo-code, reaches only fifty-seven percent pass, while our fourteen-billion model reaches eighty-seven. Hierarchy beats scale."], ["Qualitative comparison", "Qualitatively, the baselines often fail to execute at all, or silently drop part of the instruction. Here, few-shot prompting produces a muddled composition. Retrieval-augmented generation renders the airship, but stops at five hundred and twelve pixels, ignoring the upscaling request. ComfyAgent never produces a runnable graph. Our agent follows the full instruction and delivers the requested high-resolution result."], ["Conclusion", "To summarise: model the knowledge, not the raw graph. Explicit, reusable knowledge levels beat both handcrafted schemas and end-to-end training. One limitation is that rare node types get substituted with common ones. Thank you, and please come and find our poster at ECCV."]];
+
+const WIRE = { MODEL:"var(--w-model)", CLIP:"var(--w-clip)", VAE:"var(--w-vae)", CONDITIONING:"var(--w-cond)", LATENT:"var(--w-latent)", IMAGE:"var(--w-image)", CONTROL_NET:"var(--w-cnet)", MASK:"var(--w-mask)", UPSCALE_MODEL:"var(--w-upscale)",
+  STRING:"#CECECE", INT:"#A8A8A8", BBOX_DETECTOR:"#FF8A65", SEGM_DETECTOR:"#FF8A65", SAM_MODEL:"#CE93D8", DETAILER_PIPE:"#B0BEC5" };
+const wireColor = t => WIRE[t] || "#9E9E9E";
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function trunc(s,n){ s=String(s); return s.length>n ? s.slice(0,n-1)+'…' : s; }
+
+/* ---------------- graph layout + render ---------------- */
+function layoutGraph(g, W){
+  const HEAD=30, SLOT=16, MROW=15, PADB=8, XGAP=W>180?58:40, YGAP=22, PAD=16;
+  const nodes = new Map(g.nodes.map(n => [n.id, Object.assign({preds:[],succs:[]}, n)]));
+  for (const [from,,to] of g.links){ nodes.get(to).preds.push(from); nodes.get(from).succs.push(to); }
+  const layer = new Map();
+  const visit = id => { if (layer.has(id)) return layer.get(id); const n=nodes.get(id); const l = n.preds.length ? Math.max(...n.preds.map(visit))+1 : 0; layer.set(id,l); return l; };
+  nodes.forEach(n => visit(n.id));
+  nodes.forEach(n => { if (!n.preds.length && n.succs.length){ layer.set(n.id, Math.min(...n.succs.map(s => layer.get(s))) - 1); } });
+  const minL = Math.min(...layer.values()); nodes.forEach(n => layer.set(n.id, layer.get(n.id)-minL));
+  const L = Math.max(...layer.values())+1;
+  const cols = Array.from({length:L}, () => []);
+  nodes.forEach(n => cols[layer.get(n.id)].push(n));
+  cols.forEach(c => c.sort((a,b)=>(a.order??0)-(b.order??0)));
+  const pos = new Map(); const setPos = () => cols.forEach(c => c.forEach((n,i)=>pos.set(n.id,i)));
+  setPos();
+  function bary(n,key){ const arr=n[key]; if(!arr.length) return pos.get(n.id); return arr.reduce((s,id)=>s+pos.get(id),0)/arr.length; }
+  for (let it=0; it<4; it++){
+    for (let li=1; li<L; li++){ cols[li].sort((a,b)=>bary(a,'preds')-bary(b,'preds')); setPos(); }
+    for (let li=L-2; li>=0; li--){ cols[li].sort((a,b)=>bary(a,'succs')-bary(b,'succs')); setPos(); }
+  }
+  const height = n => HEAD + Math.max(n.inputs.length, n.outputs.length, 1)*SLOT + (n.meta?n.meta.length*MROW:0) + (n.image ? (W-16)+8 : 0) + PADB;
+  const colH = cols.map(c => c.reduce((s,n)=>s+height(n),0) + (c.length-1)*YGAP);
+  const H = Math.max(...colH);
+  cols.forEach((c,li) => { let y = PAD + (H-colH[li])/2; c.forEach(n => { n.x = PAD + li*(W+XGAP); n.y = y; n.w = W; n.h = height(n); n.layer = li; y += n.h + YGAP; }); });
+  const slotY = (n,i) => n.y + HEAD + i*SLOT + SLOT/2;
+  return { nodes:[...nodes.values()], links:g.links, W, HEAD, SLOT, MROW, width: PAD*2 + L*W + (L-1)*XGAP, height: H + PAD*2, slotY, L };
+}
+
+function renderGraph(container, g, opts={}){
+  const W = g.nodes.length > 16 ? 176 : 200;
+  const lay = layoutGraph(g, W);
+  const byId = new Map(lay.nodes.map(n=>[n.id,n]));
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns,'svg');
+  svg.setAttribute('viewBox', `0 0 ${lay.width} ${lay.height}`);
+  svg.setAttribute('role','img'); svg.setAttribute('aria-label', opts.label || 'ComfyUI workflow graph');
+  svg.style.aspectRatio = `${lay.width} / ${lay.height}`;
+  let wires = '', nodesHtml = '';
+  for (const [from, fs, to, ts, type] of lay.links){
+    const a = byId.get(from), b = byId.get(to);
+    const x1 = a.x + a.w, y1 = lay.slotY(a, fs), x2 = b.x, y2 = lay.slotY(b, ts);
+    const dx = Math.max(40, (x2-x1)*0.5);
+    const d = `M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
+    const len = Math.hypot(x2-x1,y2-y1)*1.15 + 40;
+    wires += `<path class="g-wire" d="${d}" stroke="${wireColor(type)}" data-from="${from}" data-to="${to}" style="--len:${len.toFixed(0)};transition-delay:${(b.layer*140+120)}ms"><title>${esc(type)}: ${esc(a.type)} → ${esc(b.type)}</title></path>`;
+  }
+  for (const n of lay.nodes){
+    const r = 7;
+    let s = `<g class="g-node" data-id="${n.id}" style="transition-delay:${n.layer*140}ms">`;
+    s += `<rect class="body" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${r}"/>`;
+    s += `<path class="head" d="M${n.x},${n.y+r} a${r},${r} 0 0 1 ${r},-${r} h${n.w-2*r} a${r},${r} 0 0 1 ${r},${r} v${lay.HEAD-r} h-${n.w} z" fill="var(--node-head)"/>`;
+    s += `<text class="title" x="${n.x+10}" y="${n.y+19.5}">${esc(trunc(n.type,22))}</text>`;
+    n.inputs.forEach(([name,type],i) => { const y = lay.slotY(n,i); s += `<circle cx="${n.x}" cy="${y}" r="4.2" fill="${wireColor(type)}" stroke="var(--node)" stroke-width="1.5"/><text class="slot" x="${n.x+10}" y="${y+3.5}">${esc(trunc(name,16))}</text>`; });
+    n.outputs.forEach(([name,type],i) => { const y = lay.slotY(n,i); s += `<circle cx="${n.x+n.w}" cy="${y}" r="4.2" fill="${wireColor(type)}" stroke="var(--node)" stroke-width="1.5"/><text class="slot" x="${n.x+n.w-10}" y="${y+3.5}" text-anchor="end">${esc(trunc(name,16))}</text>`; });
+    let yy = n.y + lay.HEAD + Math.max(n.inputs.length,n.outputs.length,1)*lay.SLOT + 4;
+    (n.meta||[]).forEach(m => { s += `<text class="meta" x="${n.x+10}" y="${yy+9}">${esc(trunc(m,30))}</text>`; yy += lay.MROW; });
+    if (n.image){ const iw = n.w-16; s += `<image href="${n.image}" x="${n.x+8}" y="${yy+4}" width="${iw}" height="${iw}" preserveAspectRatio="xMidYMid slice" style="clip-path:inset(0 round 4px)"/>`; }
+    s += `<title>${esc(n.type)}${n.meta&&n.meta.length? ' · '+esc(n.meta.join(' · ')):''}</title></g>`;
+    nodesHtml += s;
+  }
+  svg.innerHTML = wires + nodesHtml;
+  container.innerHTML = ''; container.appendChild(svg);
+  const paths = [...svg.querySelectorAll('.g-wire')];
+  svg.querySelectorAll('.g-node').forEach(gn => {
+    const id = gn.dataset.id;
+    gn.addEventListener('mouseenter', () => paths.forEach(p => { const hit = p.dataset.from===id || p.dataset.to===id; p.classList.toggle('hl', hit); p.classList.toggle('dim', !hit); }));
+    gn.addEventListener('mouseleave', () => paths.forEach(p => p.classList.remove('hl','dim')));
+  });
+  return { svg, types: [...new Set(lay.links.map(l=>l[4]))], highlight(id, on){ const gn = svg.querySelector(`.g-node[data-id="${id}"]`); if(!gn) return; gn.classList.toggle('hl', on); paths.forEach(p => { const hit = p.dataset.from==id || p.dataset.to==id; p.classList.toggle('hl', on && hit); p.classList.toggle('dim', on && !hit); }); } };
+}
+function legend(el, types){ el.innerHTML = types.map(t => `<span><i style="background:${wireColor(t)}"></i>${esc(t)}</span>`).join(''); }
+function play(canvas){ canvas.classList.remove('play'); void canvas.offsetWidth; requestAnimationFrame(() => requestAnimationFrame(() => canvas.classList.add('play'))); }
+
+/* ---------------- examples ---------------- */
+const exTabs = document.getElementById('exTabs'), exPanels = document.getElementById('exPanels');
+const seen = new WeakSet();
+const io = new IntersectionObserver(entries => entries.forEach(e => { if (e.isIntersecting && !seen.has(e.target)){ seen.add(e.target); play(e.target); } }), {threshold:.2});
+EXAMPLES.forEach((e,i) => {
+  const b = document.createElement('button'); b.className='tab'; b.type='button'; b.role='tab'; b.id='extab-'+e.idx; b.setAttribute('aria-selected', i===0); b.setAttribute('aria-controls','expanel-'+e.idx);
+  b.innerHTML = `<span class="mono">${i+1}</span>${esc(e.short)}`; exTabs.appendChild(b);
+  const p = document.createElement('div'); p.className='ex-panel'; p.id='expanel-'+e.idx; p.role='tabpanel'; p.setAttribute('aria-labelledby', b.id); p.hidden = i!==0;
+  const codeHtml = e.code.map(([line, nodeId]) => {
+    const m = line.match(/^(.*?=\s*)([^\s(]+)(\(.*)$/);
+    const html = m ? `<span class="v">${esc(m[1])}</span><span class="fn">${esc(m[2])}</span><span class="v">${esc(m[3])}</span>` : esc(line);
+    return `<span class="ln" data-node="${nodeId ?? ''}">${html}</span>`;
+  }).join('');
+  p.innerHTML = `
+    <div class="ex-top">
+      <div class="stage">
+        <div class="eyebrow">Task instruction <span class="pill">test set task ${e.idx}</span></div>
+        <p>“${esc(e.question)}”</p>
+      </div>
+      <div class="stage strategy">
+        <div class="eyebrow">Strategy <span class="pill sft">planner · SFT + self-refinement</span></div>
+        <p>${esc(e.strategy)}</p>
+      </div>
+      <div class="stage">
+        <div class="eyebrow">Skeleton pseudo-code <span class="pill sft">generator · SFT + self-refinement</span></div>
+        <pre class="code">${codeHtml}</pre>
+      </div>
+    </div>
+    <div class="ex-canvas">
+      <div class="canvas g-anim">
+        <div class="canvas-head">
+          <div class="who"><span class="pill llm">Parameter filler · pretrained LLM</span><span class="arrow">→</span><span class="pill rule">Rule-based reconstruction</span><span class="arrow">→</span><span class="pill exec">✓ executable ComfyUI workflow · ${e.graph.nodes.length} nodes · ${e.graph.links.length} links</span></div>
+          <div class="canvas-tools"><button class="btn ghost replay" type="button">↻ Replay build</button></div>
+        </div>
+        <div class="graph-scroll"><div class="graph"></div></div>
+        <div class="legend-row"></div>
+      </div>
+      <div class="grid-2" style="margin-top:14px;grid-template-columns:1fr 320px;align-items:start">
+        <p class="caption" style="margin:0">${esc(e.note)}</p>
+        <div class="result">
+          <div class="frame">
+            <img src="${e.out}" alt="Output image for task ${e.idx}" width="900" height="900" loading="lazy">
+            ${e.frame ? `<div class="orig" style="left:${e.frame*100}%;top:${e.frame*100}%;right:${e.frame*100}%;bottom:${e.frame*100}%"></div>` : ''}
+            ${e.inp ? `<div class="pip"><img src="${e.inp}" alt="Input image" width="400" height="400" loading="lazy"><span>input</span></div>` : ''}
+          </div>
+          <div class="lab"><span>${esc(e.outLabel)}</span><b>✓ executes in ComfyUI</b></div>
+        </div>
+      </div>
+    </div>`;
+  exPanels.appendChild(p);
+  const canvas = p.querySelector('.canvas');
+  const G = renderGraph(p.querySelector('.graph'), e.graph, {label:`Workflow generated for task ${e.idx}: ${e.short}`});
+  legend(p.querySelector('.legend-row'), G.types);
+  p.querySelector('.replay').addEventListener('click', () => play(canvas));
+  p.querySelectorAll('.ln').forEach(ln => { const id = ln.dataset.node; if (!id) return; ln.addEventListener('mouseenter', () => G.highlight(id, true)); ln.addEventListener('mouseleave', () => G.highlight(id, false)); });
+  io.observe(canvas);
+  b.addEventListener('click', () => { EXAMPLES.forEach(o => { document.getElementById('extab-'+o.idx).setAttribute('aria-selected', o===e); document.getElementById('expanel-'+o.idx).hidden = o!==e; }); if (!seen.has(canvas)){ seen.add(canvas); play(canvas); } });
+});
+// fix the result column on small screens
+const mq = window.matchMedia('(max-width: 860px)');
+const fixCols = () => document.querySelectorAll('.ex-canvas .grid-2').forEach(g => g.style.gridTemplateColumns = mq.matches ? '1fr' : '1fr 320px');
+mq.addEventListener('change', fixCols); fixCols();
+
+/* ---------------- results ---------------- */
+const METHODS = ['GPT-5 + Zero-Shot','GPT-5 + Few-Shot','GPT-5 + CoT','GPT-5 + CoT-SC','GPT-5 + RAG','GPT-5 + ComfyAgent','Ours'];
+const M = { VND:[0,20,26,21,42,40,152], NodeComp:[0,36.7,33.3,36.7,56.7,56.7,96.3], LinkComp:[0,36.7,33.3,36.7,56.7,56.7,98.3], TaskCons:[0,34.7,32.9,34.8,53.6,55.1,86.9], Pass:[0,26.4,22.8,24.2,48.1,36.4,86.9], Resolve:[0,16.7,15.8,12.5,25.6,29.4,61.1] };
+const tip = document.getElementById('tip');
+function showTip(e, html){ tip.innerHTML = html; tip.classList.add('show'); moveTip(e); }
+function moveTip(e){ const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 10); tip.style.left = x+'px'; tip.style.top = (e.clientY + 16)+'px'; }
+function hideTip(){ tip.classList.remove('show'); }
+function hbar(el, title, unit, values, max){
+  const rowH = 28, labelW = 138, valW = 46, W = 420, top = 4, plotW = W - labelW - valW - 8, H = top + values.length*rowH + 6;
+  let s = `<svg viewBox="0 0 ${W} ${H}" aria-label="${esc(title)} by method"><line class="base" x1="${labelW}" y1="${top}" x2="${labelW}" y2="${top+values.length*rowH}"/>`;
+  values.forEach((v,i) => {
+    const y = top + i*rowH, bh = 14, by = y + (rowH-bh)/2, w = Math.max(0, v/max*plotW), ours = i===values.length-1, label = METHODS[i].replace('GPT-5 + ','');
+    s += `<g class="row" data-i="${i}"><rect x="${labelW-6}" y="${y}" width="${W-labelW+6}" height="${rowH}" fill="transparent"/><text x="${labelW-10}" y="${y+rowH/2+4}" text-anchor="end" class="${ours?'ours':''}">${esc(label)}</text>`;
+    if (w > 0) s += `<path class="bar ${ours?'ours':''}" d="M${labelW},${by} h${Math.max(w-4,0)} a4,4 0 0 1 4,4 v${bh-8} a4,4 0 0 1 -4,4 h-${Math.max(w-4,0)} z"/>`;
+    s += `<text class="val ${ours?'ours':''}" x="${labelW + w + 8}" y="${y+rowH/2+4}">${v===0?'0':v}${v===0?'':unit}</text></g>`;
+  });
+  el.innerHTML = `<h3>${esc(title)} <small>${unit==='%'?'0–100 %':'count'}</small></h3>` + s + `</svg>`;
+  el.querySelectorAll('.row').forEach(r => { const i = +r.dataset.i; const html = `<b>${esc(METHODS[i])}</b><br>VND ${M.VND[i]} · Pass ${M.Pass[i]}% · Resolve ${M.Resolve[i]}%<br>NodeComp ${M.NodeComp[i]}% · LinkComp ${M.LinkComp[i]}%`; r.addEventListener('mouseenter', e => showTip(e, html)); r.addEventListener('mousemove', moveTip); r.addEventListener('mouseleave', hideTip); });
+}
+const chartsEl = document.getElementById('charts');
+[['Pass rate','%',M.Pass,100],['Resolve rate','%',M.Resolve,100],['Valid node diversity','',M.VND,160]].forEach(([t,u,v,mx]) => { const d=document.createElement('div'); d.className='chart'; chartsEl.appendChild(d); hbar(d,t,u,v,mx); });
+document.getElementById('fullTable').innerHTML = `<thead><tr><th>Method</th>${Object.keys(M).map(k=>`<th class="num">${k}↑</th>`).join('')}</tr></thead><tbody>` + METHODS.map((m,i) => `<tr class="${i===METHODS.length-1?'ours':''}"><td>${esc(m)}</td>${Object.keys(M).map(k=>`<td class="num">${M[k][i].toFixed(k==='VND'?0:1)}</td>`).join('')}</tr>`).join('') + `</tbody>`;
+const EXT = [['ComfyBench (20 tasks)','GPT-5 + RAG',45,60.0,60.0,40.0,25.0],['','GPT-5 + ComfyAgent',43,65.0,65.0,35.0,20.0],['','Ours',138,79.8,82.7,50.0,25.0],['FlowBench (30 tasks)','GPT-5 + RAG',42,73.3,73.3,46.7,26.7],['','GPT-5 + ComfyAgent',41,53.3,53.3,40.0,26.7],['','Ours',145,94.4,98.0,66.7,36.7]];
+document.getElementById('extTable').innerHTML = `<thead><tr><th>Benchmark</th><th>Method</th><th class="num">VND↑</th><th class="num">NodeComp↑</th><th class="num">LinkComp↑</th><th class="num">Pass↑</th><th class="num">Resolve↑</th></tr></thead><tbody>` + EXT.map(r => `<tr class="${r[1]==='Ours'?'ours':''}"><td>${esc(r[0])}</td><td style="font-weight:400;color:var(--ink-2)">${esc(r[1])}</td>${r.slice(2).map((v,j)=>`<td class="num">${j===0?v:v.toFixed(1)}</td>`).join('')}</tr>`).join('') + `</tbody>`;
+document.getElementById('scalePair').innerHTML = [['Pass',56.7,86.9],['Resolve',33.3,61.1]].map(([k,a,b]) => `<span class="head">${k}</span><span class="lab">Qwen3-32B, end-to-end</span><span class="track"><i style="width:${a}%"></i></span><span class="v">${a}%</span><span class="lab">Ours, Qwen3-14B, hierarchical</span><span class="track"><i class="ours" style="width:${b}%"></i></span><span class="v ours">${b}%</span>`).join('');
+
+/* ---------------- qualitative ---------------- */
+const QUAL = [
+  { id:'portrait', name:'Stylised portrait', img:'assets/qual_portrait.jpg', instr:'Create an image from my text prompt, apply my chosen style/character presets to control the look, and then <mark>upscale it with detail enhancement</mark> to a crisp, high-resolution final result suitable for large displays or print.', note:'<b>ComfyAgent</b> produces no runnable graph (✕). Few-shot and retrieval generate an image but never reach the requested high-resolution stage. <b>Ours</b> follows the full instruction.' },
+  { id:'airship', name:'Steampunk airship', img:'assets/qual_airship.jpg', instr:'Create an image from a text description using my custom style/character preset, then automatically <mark>upscale it to a much higher resolution with prompt-guided detail enhancement</mark> and save the final high-quality result.', note:'Few-shot prompting yields a muddled composition. <b>Retrieval</b> renders the airship but stops at 512 × 512, silently dropping the upscaling request. <b>ComfyAgent</b> fails to execute. <b>Ours</b> delivers the 1024 × 1024 result.' },
+  { id:'outpaint', name:'Outpainting', img:'assets/qual_outpaint.jpg', instr:'<mark>Expand my image outwards</mark> using new, coherent content that matches the style, colour and lighting of the original scene. Guide the expanded area’s content according to my text prompts, <mark>maintaining the integrity</mark> and seamlessly integrating the new area.', note:'<b>Few-shot</b> produces no runnable graph (✕). Retrieval and ComfyAgent return the image essentially unchanged or padded. <b>Ours</b> extends the scene with coherent new content.' },
+];
+const qtabs = document.getElementById('qualTabs'), qpanels = document.getElementById('qualPanels');
+QUAL.forEach((q,i) => {
+  const b = document.createElement('button'); b.className='tab'; b.type='button'; b.role='tab'; b.id='tab-'+q.id; b.setAttribute('aria-selected', i===0); b.setAttribute('aria-controls','panel-'+q.id); b.textContent = q.name; qtabs.appendChild(b);
+  const p = document.createElement('div'); p.className='qual-panel'; p.id='panel-'+q.id; p.role='tabpanel'; p.setAttribute('aria-labelledby', b.id); p.hidden = i!==0;
+  p.innerHTML = `<p class="instr"><span class="eyebrow">Task instruction</span>${q.instr}</p><button class="zoom" type="button" aria-label="Enlarge comparison for ${esc(q.name)}"><img src="${q.img}" alt="Comparison strip for ${esc(q.name)}: task input, GPT-5 few-shot, GPT-5 RAG, ComfyAgent, ours" loading="lazy"></button><p class="note">${q.note}</p>`;
+  qpanels.appendChild(p);
+  b.addEventListener('click', () => { QUAL.forEach(o => { document.getElementById('tab-'+o.id).setAttribute('aria-selected', o===q); document.getElementById('panel-'+o.id).hidden = o!==q; }); });
+  p.querySelector('.zoom').addEventListener('click', () => openLB(q.img, `Comparison strip for ${q.name}`));
+});
+
+/* ---------------- lightbox ---------------- */
+const lb = document.getElementById('lightbox'), lbImg = document.getElementById('lbImg');
+function openLB(src, alt){ lbImg.src = src; lbImg.alt = alt || ''; lb.showModal(); }
+lb.addEventListener('click', e => { if (e.target === lb || e.target === lbImg) lb.close(); });
+document.getElementById('lbClose').addEventListener('click', () => lb.close());
+document.getElementById('posterZoom').addEventListener('click', () => openLB('assets/poster_2560.jpg', 'ECCV 2026 poster at full resolution'));
+
+/* ---------------- talk ---------------- */
+const CH = [[0,'Introduction'],[18,'The task: instruction → workflow → result'],[51,'Why direct text-to-JSON fails'],[86,'Our idea: invert, inject, infer'],[110,'Knowledge inversion: five levels'],[145,'Knowledge injection: what needs learning'],[172,'Knowledge inference: running it backwards'],[198,'Results'],[227,'Generalisation and ablation'],[249,'Qualitative comparison'],[275,'Conclusion']];
+const video = document.getElementById('talkVideo'), chEl = document.getElementById('chapters');
+const fmt = t => `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
+chEl.innerHTML = CH.map(([t,n]) => `<li><button type="button" data-t="${t}"><span class="t">${fmt(t)}</span><span>${esc(n)}</span></button></li>`).join('');
+chEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { video.currentTime = +b.dataset.t; video.play(); }));
+video.addEventListener('timeupdate', () => { const t = video.currentTime; let cur = 0; CH.forEach(([s],i) => { if (t >= s) cur = i; }); chEl.querySelectorAll('button').forEach((b,i) => b.classList.toggle('now', i===cur)); });
+document.getElementById('transcript').innerHTML = CUES.map(([t,c]) => `<p><b>${esc(t)}.</b> ${esc(c)}</p>`).join('');
+
+/* ---------------- bibtex ---------------- */
+document.getElementById('copyBib').addEventListener('click', async e => {
+  const b = e.currentTarget; try { await navigator.clipboard.writeText(document.getElementById('bibtexText').textContent); b.textContent = 'Copied'; } catch { b.textContent = 'Select and copy'; } setTimeout(() => b.textContent = 'Copy', 1600);
+});
+</script>
+</body>
+</html>
