@@ -428,7 +428,7 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
     <details class="fulltable">
       <summary>All six metrics on the test set</summary>
       <div class="table-scroll"><table id="fullTable"></table></div>
-      <p class="metric-note"><b>VND</b> distinct valid node types · <b>NodeComp / LinkComp</b> share of nodes correctly instantiated / correctly connected · <b>TaskCons</b> GPT-judged task fulfilment · <b>Pass</b> executes in ComfyUI · <b>Resolve</b> executes and fulfils the task. All in %, except VND.</p>
+      <p class="metric-note"><b>VND</b> distinct valid node types · <b>NodeComp / LinkComp</b> share of nodes correctly instantiated / correctly connected · <b>TaskCons</b> GPT-judged task fulfilment · <b>Pass</b> executes in ComfyUI · <b>Resolve</b> executes and fulfils the task.</p>
     </details>
     <div class="results-lower">
       <div class="card">
@@ -653,9 +653,9 @@ function hbar(el, title, unit, values, max){
 }
 const chartsEl = document.getElementById('charts');
 [['Pass rate','%',M.Pass,100],['Resolve rate','%',M.Resolve,100],['Valid node diversity','',M.VND,160]].forEach(([t,u,v,mx]) => { const d=document.createElement('div'); d.className='chart'; chartsEl.appendChild(d); hbar(d,t,u,v,mx); });
-document.getElementById('fullTable').innerHTML = `<thead><tr><th>Method</th>${Object.keys(M).map(k=>`<th class="num">${k}↑</th>`).join('')}</tr></thead><tbody>` + METHODS.map((m,i) => `<tr class="${i===METHODS.length-1?'ours':''}"><td>${esc(m)}</td>${Object.keys(M).map(k=>`<td class="num">${M[k][i].toFixed(k==='VND'?0:1)}</td>`).join('')}</tr>`).join('') + `</tbody>`;
+document.getElementById('fullTable').innerHTML = `<thead><tr><th>Method</th>${Object.keys(M).map(k=>`<th class="num">${k}↑</th>`).join('')}</tr></thead><tbody>` + METHODS.map((m,i) => `<tr class="${i===METHODS.length-1?'ours':''}"><td>${esc(m)}</td>${Object.keys(M).map(k=>`<td class="num">${k==='VND'?M[k][i]:M[k][i].toFixed(1)+'%'}</td>`).join('')}</tr>`).join('') + `</tbody>`;
 const EXT = [['ComfyBench (20 tasks)','GPT-5 + RAG',45,60.0,60.0,40.0,25.0],['','GPT-5 + ComfyAgent',43,65.0,65.0,35.0,20.0],['','Ours',138,79.8,82.7,50.0,25.0],['FlowBench (30 tasks)','GPT-5 + RAG',42,73.3,73.3,46.7,26.7],['','GPT-5 + ComfyAgent',41,53.3,53.3,40.0,26.7],['','Ours',145,94.4,98.0,66.7,36.7]];
-document.getElementById('extTable').innerHTML = `<thead><tr><th>Benchmark</th><th>Method</th><th class="num">VND↑</th><th class="num">NodeComp↑</th><th class="num">LinkComp↑</th><th class="num">Pass↑</th><th class="num">Resolve↑</th></tr></thead><tbody>` + EXT.map(r => `<tr class="${r[1]==='Ours'?'ours':''}"><td>${esc(r[0])}</td><td style="font-weight:400;color:var(--ink-2)">${esc(r[1])}</td>${r.slice(2).map((v,j)=>`<td class="num">${j===0?v:v.toFixed(1)}</td>`).join('')}</tr>`).join('') + `</tbody>`;
+document.getElementById('extTable').innerHTML = `<thead><tr><th>Benchmark</th><th>Method</th><th class="num">VND↑</th><th class="num">NodeComp↑</th><th class="num">LinkComp↑</th><th class="num">Pass↑</th><th class="num">Resolve↑</th></tr></thead><tbody>` + EXT.map(r => `<tr class="${r[1]==='Ours'?'ours':''}"><td>${esc(r[0])}</td><td style="font-weight:400;color:var(--ink-2)">${esc(r[1])}</td>${r.slice(2).map((v,j)=>`<td class="num">${j===0?v:v.toFixed(1)+'%'}</td>`).join('')}</tr>`).join('') + `</tbody>`;
 document.getElementById('scalePair').innerHTML = [['Pass',56.7,86.9],['Resolve',33.3,61.1]].map(([k,a,b]) => `<span class="head">${k}</span><span class="lab">Qwen3-32B, end-to-end</span><span class="track"><i style="width:${a}%"></i></span><span class="v">${a}%</span><span class="lab">Ours, Qwen3-14B, hierarchical</span><span class="track"><i class="ours" style="width:${b}%"></i></span><span class="v ours">${b}%</span>`).join('');
 
 /* ---------------- lightbox ---------------- */
