@@ -525,10 +525,6 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
         </div>
         <!-- TODO: set YOUTUBE_URL in the script below to show a YouTube link here -->
         <p class="yt" id="ytLine" hidden>Also on <a id="ytLink" href="#" target="_blank" rel="noopener">YouTube ↗</a></p>
-        <details class="transcript">
-          <summary>Read the transcript</summary>
-          <div class="body" id="transcript"></div>
-        </details>
       </div>
       <div class="chapters">
         <h3>Chapters</h3>
@@ -576,7 +572,6 @@ if (YOUTUBE_URL){ const l = document.getElementById('ytLink'); l.href = YOUTUBE_
 
 /* ---------------- data ---------------- */
 const EXAMPLES = __DATA_examples__;
-const CUES = __DATA_cues__;
 
 const WIRE = { MODEL:"var(--w-model)", CLIP:"var(--w-clip)", VAE:"var(--w-vae)", CONDITIONING:"var(--w-cond)", LATENT:"var(--w-latent)", IMAGE:"var(--w-image)", CONTROL_NET:"var(--w-cnet)", MASK:"var(--w-mask)", UPSCALE_MODEL:"var(--w-upscale)",
   STRING:"#CECECE", INT:"#A8A8A8", BBOX_DETECTOR:"#FF8A65", SEGM_DETECTOR:"#FF8A65", SAM_MODEL:"#CE93D8", DETAILER_PIPE:"#B0BEC5" };
@@ -776,7 +771,6 @@ const fmt = t => `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
 chEl.innerHTML = CH.map(([t,n]) => `<li><button type="button" data-t="${t}"><span class="t">${fmt(t)}</span><span>${esc(n)}</span></button></li>`).join('');
 chEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { video.currentTime = +b.dataset.t; video.play(); }));
 video.addEventListener('timeupdate', () => { const t = video.currentTime; let cur = 0; CH.forEach(([s],i) => { if (t >= s) cur = i; }); chEl.querySelectorAll('button').forEach((b,i) => b.classList.toggle('now', i===cur)); });
-document.getElementById('transcript').innerHTML = CUES.map(([t,c]) => `<p><b>${esc(t)}.</b> ${esc(c)}</p>`).join('');
 
 /* ---------------- bibtex ---------------- */
 document.getElementById('copyBib').addEventListener('click', async e => {
