@@ -7,7 +7,7 @@ import base64, json, os, re, shutil, textwrap
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SW = os.path.dirname(HERE)                      # session scratchpad (has assets/, paperfigs/, video_720.mp4)
+SW = os.path.dirname(HERE)                      # session scratchpad (assets/, paperfigs/)
 PROJ = r"C:\Users\krist\Desktop\Knowledge-Centric Agents"
 OUT = os.path.join(PROJ, "project_page")
 A = os.path.join(OUT, "assets")
@@ -26,11 +26,10 @@ def sq(im, size):
     return im.crop(((w - m) // 2, (h - m) // 2, (w - m) // 2 + m, (h - m) // 2 + m)).resize((size, size), Image.LANCZOS)
 
 # ------------------------------------------------------------------ static assets
-for fn in ("logo_insait.png", "logo_adobe.png", "logo_eccv.png", "qual_portrait.jpg", "qual_airship.jpg", "qual_outpaint.jpg"):
+for fn in ("logo_insait.png", "logo_adobe.png", "logo_eccv.png"):
     shutil.copy(os.path.join(SW, "assets", fn), os.path.join(A, fn))
 shutil.copy(os.path.join(PROJ, "ECCV2026_demo_Knowledge-Centric-Agents_captioned.mp4"), os.path.join(A, "demo.mp4"))
-shutil.copy(os.path.join(SW, "video_720.mp4"), os.path.join(A, "talk_720p.mp4"))
-shutil.copy(os.path.join(SW, "video_poster.jpg"), os.path.join(A, "talk_poster.jpg"))
+save_jpg(Image.open(os.path.join(SW, "paperfigs", "comp.png")), "comparison.jpg", 1800, q=86)
 save_png(Image.open(os.path.join(SW, "paperfigs", "method.png")).convert("RGB").convert("P", palette=Image.ADAPTIVE, colors=256), "method.png", 1800)
 
 # demo poster frame: pull a frame from the demo video with ffmpeg
@@ -182,23 +181,6 @@ for e in EX:
                          out="assets/" + out_name, inp=("assets/" + inp_name) if inp_name else None, outLabel=e["outLabel"], frame=e["frame"], note=e["note"]))
     print(f"task {e['idx']}: {len(g['nodes'])} nodes, {len(g['links'])} links, {len(code)} code lines")
 
-# ------------------------------------------------------------------ subtitles / transcript
-srt = open(os.path.join(PROJ, "ECCV2026_video_Knowledge-Centric-Agents.srt"), encoding="utf-8").read().strip()
-cues = []
-for b in re.split(r"\n\s*\n", srt):
-    lines = b.strip().splitlines()
-    if len(lines) < 3: continue
-    m = re.match(r"(\d\d):(\d\d):(\d\d),(\d{3}) --> ", lines[1])
-    start = int(m[1]) * 3600 + int(m[2]) * 60 + int(m[3]) + int(m[4]) / 1000
-    cues.append((start, lines[1].replace(",", "."), " ".join(lines[2:])))
-open(os.path.join(A, "talk.vtt"), "w", encoding="utf-8").write("WEBVTT\n\n" + "\n\n".join(f"{i+1}\n{t}\n{txt}" for i, (_, t, txt) in enumerate(cues)) + "\n")
-chapters = [(0, "Introduction"), (18, "The task"), (51, "Why direct text-to-JSON fails"), (86, "Our idea"), (110, "Knowledge inversion"), (145, "Knowledge injection"),
-            (172, "Knowledge inference"), (198, "Results"), (227, "Generalisation and ablation"), (249, "Qualitative comparison"), (275, "Conclusion")]
-transcript = []
-for i, (s, title) in enumerate(chapters):
-    e = chapters[i + 1][0] if i + 1 < len(chapters) else 1e9
-    transcript.append([title, " ".join(c[2] for c in cues if s - 0.5 <= c[0] < e - 0.5)])
-
 # ------------------------------------------------------------------ social card (1200 x 630)
 def F(name, size): return ImageFont.truetype(os.path.join(FONTS, name), size)
 og = Image.new("RGB", (1200, 630), (248, 246, 247)); d = ImageDraw.Draw(og)
@@ -216,7 +198,7 @@ og.save(os.path.join(A, "og.jpg"), "JPEG", quality=88)
 
 # ------------------------------------------------------------------ assemble
 tpl = open(os.path.join(HERE, "page_template.html"), encoding="utf-8").read()
-html = tpl.replace("__DATA_examples__", json.dumps(examples, ensure_ascii=False)).replace("__DATA_cues__", json.dumps(transcript, ensure_ascii=False))
+html = tpl.replace("__DATA_examples__", json.dumps(examples, ensure_ascii=False))
 assert "__DATA_" not in html
 open(os.path.join(OUT, "index.html"), "w", encoding="utf-8").write(html)
 open(os.path.join(OUT, ".nojekyll"), "w").write("")
@@ -235,12 +217,12 @@ Static site, no build step needed to deploy.
 
 ## Three things to fill in (search for them in `index.html`)
 - `CODE_URL` — the code repository. Also remove `class="soon"`, `aria-disabled` and the `onclick` on that button.
-- `YOUTUBE_URL` — set the constant at the top of the script to show a YouTube link under the talk video.
+- `YOUTUBE_URL` — set the constant at the top of the script; the hero's "5-minute talk" button then appears and links there.
 - `SITE_URL` — the absolute URL of the deployed page, used for the Open Graph preview image (`assets/og.jpg`).
 
 ## Contents
 - `index.html` — the page (single file, inline CSS/JS, Google Fonts as the only external dependency).
-- `assets/` — images, the 39 s demo video (`demo.mp4`), the 5-minute talk (`talk_720p.mp4` + `talk.vtt`), social card (`og.jpg`).
+- `assets/` — images, the 39 s demo video (`demo.mp4`), social card (`og.jpg`).
 - `tools/` — `build_page.py` + `page_template.html` regenerate `index.html` and `assets/` from the paper's source data; not needed for deployment.
 """)
 total = sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(OUT) for f in fs)

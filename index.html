@@ -263,16 +263,8 @@ details.fulltable .table-scroll{margin-top:12px}
 .limit{margin-top:22px;font-size:14px;color:var(--ink-2);padding:14px 18px;border-left:3px solid var(--rule);background:var(--surface)}
 .limit b{color:var(--ink)}
 
-/* qualitative */
-.qual-panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
-.qual-panel[hidden]{display:none}
-.qual-panel .instr{font-size:15px;color:var(--ink);margin:0 0 14px;padding:10px 14px;border-left:3px solid var(--brand);background:var(--surface-2);border-radius:0 8px 8px 0}
-.qual-panel .instr .eyebrow{display:block;margin-bottom:3px}
-.qual-panel .instr mark{background:transparent;color:var(--brand-ink);font-weight:600}
-.qual-panel button.zoom{all:unset;display:block;cursor:zoom-in;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
-.qual-panel button.zoom:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
-.qual-panel .note{font-size:13.5px;color:var(--ink-3);margin:12px 0 0}
-.qual-panel .note b{color:var(--ink-2)}
+.figure button.zoom{all:unset;display:block;cursor:zoom-in;width:100%}
+.figure button.zoom:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
 
 /* bibtex / footer */
 .bib{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
@@ -464,10 +456,11 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
     <div class="sec-head">
       <span class="eyebrow">Qualitative comparison</span>
       <h2>Same instruction, every method</h2>
-      <p>Baselines either fail to execute at all, or silently drop part of the instruction. Click a strip to enlarge it.</p>
     </div>
-    <div class="tabs" role="tablist" id="qualTabs"></div>
-    <div id="qualPanels"></div>
+    <div class="figure">
+      <button class="zoom" type="button" id="compZoom" aria-label="Enlarge the qualitative comparison"><img src="assets/comparison.jpg" alt="Qualitative comparison on four tasks: task input, GPT-5 few-shot, GPT-5 RAG, ComfyAgent and ours. Baselines fail to execute or drop part of the instruction; ours follows the full instruction." width="1800" height="1995" loading="lazy"></button>
+    </div>
+    <p class="caption">Baselines either fail to execute (✕) or silently drop part of the instruction, for example rendering the airship but stopping at 512 × 512 instead of upscaling. Click to enlarge.</p>
   </div>
 </section>
 
@@ -680,27 +673,12 @@ const EXT = [['ComfyBench (20 tasks)','GPT-5 + RAG',45,60.0,60.0,40.0,25.0],['',
 document.getElementById('extTable').innerHTML = `<thead><tr><th>Benchmark</th><th>Method</th><th class="num">VND↑</th><th class="num">NodeComp↑</th><th class="num">LinkComp↑</th><th class="num">Pass↑</th><th class="num">Resolve↑</th></tr></thead><tbody>` + EXT.map(r => `<tr class="${r[1]==='Ours'?'ours':''}"><td>${esc(r[0])}</td><td style="font-weight:400;color:var(--ink-2)">${esc(r[1])}</td>${r.slice(2).map((v,j)=>`<td class="num">${j===0?v:v.toFixed(1)}</td>`).join('')}</tr>`).join('') + `</tbody>`;
 document.getElementById('scalePair').innerHTML = [['Pass',56.7,86.9],['Resolve',33.3,61.1]].map(([k,a,b]) => `<span class="head">${k}</span><span class="lab">Qwen3-32B, end-to-end</span><span class="track"><i style="width:${a}%"></i></span><span class="v">${a}%</span><span class="lab">Ours, Qwen3-14B, hierarchical</span><span class="track"><i class="ours" style="width:${b}%"></i></span><span class="v ours">${b}%</span>`).join('');
 
-/* ---------------- qualitative ---------------- */
-const QUAL = [
-  { id:'portrait', name:'Stylised portrait', img:'assets/qual_portrait.jpg', instr:'Create an image from my text prompt, apply my chosen style/character presets to control the look, and then <mark>upscale it with detail enhancement</mark> to a crisp, high-resolution final result suitable for large displays or print.', note:'<b>ComfyAgent</b> produces no runnable graph (✕). Few-shot and retrieval generate an image but never reach the requested high-resolution stage. <b>Ours</b> follows the full instruction.' },
-  { id:'airship', name:'Steampunk airship', img:'assets/qual_airship.jpg', instr:'Create an image from a text description using my custom style/character preset, then automatically <mark>upscale it to a much higher resolution with prompt-guided detail enhancement</mark> and save the final high-quality result.', note:'Few-shot prompting yields a muddled composition. <b>Retrieval</b> renders the airship but stops at 512 × 512, silently dropping the upscaling request. <b>ComfyAgent</b> fails to execute. <b>Ours</b> delivers the 1024 × 1024 result.' },
-  { id:'outpaint', name:'Outpainting', img:'assets/qual_outpaint.jpg', instr:'<mark>Expand my image outwards</mark> using new, coherent content that matches the style, colour and lighting of the original scene. Guide the expanded area’s content according to my text prompts, <mark>maintaining the integrity</mark> and seamlessly integrating the new area.', note:'<b>Few-shot</b> produces no runnable graph (✕). Retrieval and ComfyAgent return the image essentially unchanged or padded. <b>Ours</b> extends the scene with coherent new content.' },
-];
-const qtabs = document.getElementById('qualTabs'), qpanels = document.getElementById('qualPanels');
-QUAL.forEach((q,i) => {
-  const b = document.createElement('button'); b.className='tab'; b.type='button'; b.role='tab'; b.id='tab-'+q.id; b.setAttribute('aria-selected', i===0); b.setAttribute('aria-controls','panel-'+q.id); b.textContent = q.name; qtabs.appendChild(b);
-  const p = document.createElement('div'); p.className='qual-panel'; p.id='panel-'+q.id; p.role='tabpanel'; p.setAttribute('aria-labelledby', b.id); p.hidden = i!==0;
-  p.innerHTML = `<p class="instr"><span class="eyebrow">Task instruction</span>${q.instr}</p><button class="zoom" type="button" aria-label="Enlarge comparison for ${esc(q.name)}"><img src="${q.img}" alt="Comparison strip for ${esc(q.name)}: task input, GPT-5 few-shot, GPT-5 RAG, ComfyAgent, ours" loading="lazy"></button><p class="note">${q.note}</p>`;
-  qpanels.appendChild(p);
-  b.addEventListener('click', () => { QUAL.forEach(o => { document.getElementById('tab-'+o.id).setAttribute('aria-selected', o===q); document.getElementById('panel-'+o.id).hidden = o!==q; }); });
-  p.querySelector('.zoom').addEventListener('click', () => openLB(q.img, `Comparison strip for ${q.name}`));
-});
-
 /* ---------------- lightbox ---------------- */
 const lb = document.getElementById('lightbox'), lbImg = document.getElementById('lbImg');
 function openLB(src, alt){ lbImg.src = src; lbImg.alt = alt || ''; lb.showModal(); }
 lb.addEventListener('click', e => { if (e.target === lb || e.target === lbImg) lb.close(); });
 document.getElementById('lbClose').addEventListener('click', () => lb.close());
+document.getElementById('compZoom').addEventListener('click', () => openLB('assets/comparison.jpg', 'Qualitative comparison at full resolution'));
 
 /* ---------------- bibtex ---------------- */
 document.getElementById('copyBib').addEventListener('click', async e => {
