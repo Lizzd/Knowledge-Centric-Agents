@@ -347,8 +347,7 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
 <section id="why">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">The problem</span>
-      <h2>Why direct text-to-JSON generation fails</h2>
+      <h2>Motivation</h2>
       <p>A ComfyUI workflow is a directed graph of model and operation nodes, stored as JSON. Building a good one by hand takes real expertise. Prior agents ask a language model to write that JSON directly, and it breaks for two separate reasons.</p>
     </div>
     <div class="grid-2">
@@ -371,8 +370,7 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
 <section id="method">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">Our idea</span>
-      <h2>Model the knowledge, not the raw graph</h2>
+      <h2>Method</h2>
       <p>We make expert knowledge explicit as a hierarchy of abstraction levels, learn only the transitions that genuinely require reasoning, and generate by running that same hierarchy backwards.</p>
     </div>
     <div class="verbs">
@@ -411,8 +409,7 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
 <section id="examples">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">Inference on real tasks</span>
-      <h2>Running the hierarchy backwards</h2>
+      <h2>Examples</h2>
       <p>Four test-set tasks, every artefact the agent's actual output. Pick a task; hover a line of pseudo-code to find its node in the graph. Wires carry ComfyUI's own type colours.</p>
     </div>
     <div class="tabs" role="tablist" id="exTabs"></div>
@@ -423,8 +420,7 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
 <section id="results">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">Results</span>
-      <h2>Richer graphs that actually run</h2>
+      <h2>Results</h2>
       <p>Our 30-task test set. All methods use GPT-5 as the underlying LLM. Pass and Resolve were scored by executing every generated workflow in ComfyUI by hand and inspecting the outcome.</p>
     </div>
     <div class="charts" id="charts"></div>
@@ -452,8 +448,7 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
 <section id="qual">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">Qualitative comparison</span>
-      <h2>Same instruction, every method</h2>
+      <h2>Qualitative comparison</h2>
     </div>
     <div class="figure">
       <button class="zoom" type="button" id="compZoom" aria-label="Enlarge the qualitative comparison"><img src="assets/comparison.jpg" alt="Qualitative comparison on four tasks: task input, GPT-5 few-shot, GPT-5 RAG, ComfyAgent and ours. Baselines fail to execute or drop part of the instruction; ours follows the full instruction." width="1800" height="1995" loading="lazy"></button>
@@ -467,7 +462,6 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
 <section id="bibtex">
   <div class="wrap">
     <div class="sec-head">
-      <span class="eyebrow">Citation</span>
       <h2>BibTeX</h2>
     </div>
     <div class="bib">
