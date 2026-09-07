@@ -274,39 +274,6 @@ details.fulltable .table-scroll{margin-top:12px}
 .qual-panel .note{font-size:13.5px;color:var(--ink-3);margin:12px 0 0}
 .qual-panel .note b{color:var(--ink-2)}
 
-/* video */
-.video-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(240px,.7fr);gap:22px;align-items:start}
-@media (max-width:900px){.video-grid{grid-template-columns:1fr}}
-.player{background:var(--canvas);border-radius:12px;overflow:hidden;border:1px solid var(--node-line)}
-.player video{width:100%;aspect-ratio:16/9;background:#000}
-.chapters{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 8px}
-.chapters h3{font-size:14px;padding:4px 10px 10px;color:var(--ink-2)}
-.chapters ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
-.chapters button{all:unset;display:grid;grid-template-columns:44px 1fr;gap:10px;align-items:baseline;width:100%;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:14px;color:var(--ink)}
-.chapters button:hover{background:var(--surface-2)}
-.chapters button.now{background:var(--brand-soft);color:var(--brand-ink)}
-.chapters button:focus-visible{outline:2px solid var(--brand)}
-.chapters .t{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
-.chapters button.now .t{color:var(--brand-ink)}
-.yt{margin-top:12px;font-size:14px;color:var(--ink-3)}
-details.transcript{margin-top:14px}
-details.transcript summary{cursor:pointer;font-size:14px;color:var(--brand-ink);font-weight:500}
-details.transcript .body{margin-top:10px;columns:2;column-gap:28px;font-size:14px;color:var(--ink-2);line-height:1.6}
-@media (max-width:760px){details.transcript .body{columns:1}}
-details.transcript .body p{margin:0 0 .6em;break-inside:avoid}
-
-/* poster */
-.poster-grid{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:26px;align-items:start}
-@media (max-width:860px){.poster-grid{grid-template-columns:1fr}}
-button.poster-zoom{all:unset;display:block;cursor:zoom-in;border-radius:10px;overflow:hidden;border:1px solid var(--line);box-shadow:var(--shadow);position:relative}
-button.poster-zoom:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
-button.poster-zoom .hint{position:absolute;right:12px;bottom:12px;background:rgba(29,21,32,.78);color:#fff;font-size:12px;padding:5px 9px;border-radius:6px;font-family:Consolas,"SFMono-Regular",Menlo,monospace}
-.poster-side{display:grid;gap:14px}
-.qr{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:8px;justify-items:center;text-align:center}
-.qr img{width:170px;height:170px;image-rendering:pixelated}
-.qr .eyebrow{color:#6b5f68}
-.qr a{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:12.5px;color:#7A1450}
-
 /* bibtex / footer */
 .bib{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
 .bib pre{margin:0;font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:12.5px;line-height:1.55;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}
@@ -356,7 +323,7 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
       <a class="btn primary" href="https://arxiv.org/abs/2607.15845" target="_blank" rel="noopener">arXiv</a>
       <!-- TODO: replace with the repository URL and remove the "soon" class -->
       <a class="btn soon" id="codeBtn" href="CODE_URL" aria-disabled="true" onclick="return false">Code <span class="tag">coming soon</span></a>
-      <a class="btn" href="#talk">5-minute talk</a>
+      <a class="btn" id="talkBtn" href="#" target="_blank" rel="noopener" hidden>5-minute talk ↗</a>
     </div>
 
     <div class="demo-video">
@@ -504,30 +471,6 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
   </div>
 </section>
 
-<section id="talk">
-  <div class="wrap">
-    <div class="sec-head">
-      <span class="eyebrow">Video</span>
-      <h2>5-minute talk</h2>
-    </div>
-    <div class="video-grid">
-      <div>
-        <div class="player">
-          <video id="talkVideo" controls preload="metadata" playsinline poster="assets/talk_poster.jpg">
-            <source src="assets/talk_720p.mp4" type="video/mp4">
-            <track kind="subtitles" src="assets/talk.vtt" srclang="en" label="English" default>
-          </video>
-        </div>
-        <!-- TODO: set YOUTUBE_URL in the script below to show a YouTube link here -->
-        <p class="yt" id="ytLine" hidden>Also on <a id="ytLink" href="#" target="_blank" rel="noopener">YouTube ↗</a></p>
-      </div>
-      <div class="chapters">
-        <h3>Chapters</h3>
-        <ol id="chapters"></ol>
-      </div>
-    </div>
-  </div>
-</section>
 
 
 <section id="bibtex">
@@ -563,7 +506,7 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
 <script>
 /* ---------------- config (fill in when available) ---------------- */
 const YOUTUBE_URL = "";   // e.g. "https://youtu.be/XXXXXXXX"
-if (YOUTUBE_URL){ const l = document.getElementById('ytLink'); l.href = YOUTUBE_URL; document.getElementById('ytLine').hidden = false; }
+if (YOUTUBE_URL){ const b = document.getElementById('talkBtn'); b.href = YOUTUBE_URL; b.hidden = false; }
 
 /* ---------------- data ---------------- */
 const EXAMPLES = __DATA_examples__;
@@ -758,14 +701,6 @@ const lb = document.getElementById('lightbox'), lbImg = document.getElementById(
 function openLB(src, alt){ lbImg.src = src; lbImg.alt = alt || ''; lb.showModal(); }
 lb.addEventListener('click', e => { if (e.target === lb || e.target === lbImg) lb.close(); });
 document.getElementById('lbClose').addEventListener('click', () => lb.close());
-
-/* ---------------- talk ---------------- */
-const CH = [[0,'Introduction'],[18,'The task: instruction → workflow → result'],[51,'Why direct text-to-JSON fails'],[86,'Our idea: invert, inject, infer'],[110,'Knowledge inversion: five levels'],[145,'Knowledge injection: what needs learning'],[172,'Knowledge inference: running it backwards'],[198,'Results'],[227,'Generalisation and ablation'],[249,'Qualitative comparison'],[275,'Conclusion']];
-const video = document.getElementById('talkVideo'), chEl = document.getElementById('chapters');
-const fmt = t => `${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;
-chEl.innerHTML = CH.map(([t,n]) => `<li><button type="button" data-t="${t}"><span class="t">${fmt(t)}</span><span>${esc(n)}</span></button></li>`).join('');
-chEl.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { video.currentTime = +b.dataset.t; video.play(); }));
-video.addEventListener('timeupdate', () => { const t = video.currentTime; let cur = 0; CH.forEach(([s],i) => { if (t >= s) cur = i; }); chEl.querySelectorAll('button').forEach((b,i) => b.classList.toggle('now', i===cur)); });
 
 /* ---------------- bibtex ---------------- */
 document.getElementById('copyBib').addEventListener('click', async e => {
