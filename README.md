@@ -15,5 +15,5 @@ Static site, no build step needed to deploy.
 
 ## Contents
 - `index.html` — the page (single file, inline CSS/JS, Google Fonts as the only external dependency).
-- `assets/` — images, the 39 s demo video (`demo.mp4`), the 5-minute talk (`talk_720p.mp4` + `talk.vtt`), poster (`poster.pdf`, JPEGs), social card (`og.jpg`).
+- `assets/` — images, the 39 s demo video (`demo.mp4`), the 5-minute talk (`talk_720p.mp4` + `talk.vtt`), social card (`og.jpg`).
 - `tools/` — `build_page.py` + `page_template.html` regenerate `index.html` and `assets/` from the paper's source data; not needed for deployment.

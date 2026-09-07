@@ -26,10 +26,8 @@ def sq(im, size):
     return im.crop(((w - m) // 2, (h - m) // 2, (w - m) // 2 + m, (h - m) // 2 + m)).resize((size, size), Image.LANCZOS)
 
 # ------------------------------------------------------------------ static assets
-for fn in ("logo_insait.png", "logo_adobe.png", "logo_eccv.png", "qr_arxiv.png", "poster_1280.jpg", "poster_2560.jpg",
-           "qual_portrait.jpg", "qual_airship.jpg", "qual_outpaint.jpg"):
+for fn in ("logo_insait.png", "logo_adobe.png", "logo_eccv.png", "qual_portrait.jpg", "qual_airship.jpg", "qual_outpaint.jpg"):
     shutil.copy(os.path.join(SW, "assets", fn), os.path.join(A, fn))
-shutil.copy(os.path.join(PROJ, "ECCV2026_poster_Knowledge-Centric-Agents.pdf"), os.path.join(A, "poster.pdf"))
 shutil.copy(os.path.join(PROJ, "ECCV2026_demo_Knowledge-Centric-Agents_captioned.mp4"), os.path.join(A, "demo.mp4"))
 shutil.copy(os.path.join(SW, "video_720.mp4"), os.path.join(A, "talk_720p.mp4"))
 shutil.copy(os.path.join(SW, "video_poster.jpg"), os.path.join(A, "talk_poster.jpg"))
@@ -242,7 +240,7 @@ Static site, no build step needed to deploy.
 
 ## Contents
 - `index.html` — the page (single file, inline CSS/JS, Google Fonts as the only external dependency).
-- `assets/` — images, the 39 s demo video (`demo.mp4`), the 5-minute talk (`talk_720p.mp4` + `talk.vtt`), poster (`poster.pdf`, JPEGs), social card (`og.jpg`).
+- `assets/` — images, the 39 s demo video (`demo.mp4`), the 5-minute talk (`talk_720p.mp4` + `talk.vtt`), social card (`og.jpg`).
 - `tools/` — `build_page.py` + `page_template.html` regenerate `index.html` and `assets/` from the paper's source data; not needed for deployment.
 """)
 total = sum(os.path.getsize(os.path.join(dp, f)) for dp, _, fs in os.walk(OUT) for f in fs)
