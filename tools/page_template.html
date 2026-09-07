@@ -336,7 +336,6 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
       <a href="#examples">Examples</a>
       <a href="#results">Results</a>
       <a href="#talk">Talk</a>
-      <a href="#poster">Poster</a>
       <a href="#bibtex">BibTeX</a>
       <a class="cta" href="https://arxiv.org/abs/2607.15845" target="_blank" rel="noopener">arXiv ↗</a>
     </nav>
@@ -539,28 +538,6 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
   </div>
 </section>
 
-<section id="poster">
-  <div class="wrap">
-    <div class="sec-head">
-      <span class="eyebrow">ECCV 2026</span>
-      <h2>Poster</h2>
-    </div>
-    <div class="poster-grid">
-      <button class="poster-zoom" type="button" id="posterZoom" aria-label="Open the poster at full resolution">
-        <img src="assets/poster_1280.jpg" alt="ECCV 2026 poster: Knowledge-Centric Agents for Workflow Generation in ComfyUI" width="1280" height="640" loading="lazy">
-        <span class="hint">click to zoom</span>
-      </button>
-      <div class="poster-side">
-        <a class="btn" href="assets/poster.pdf" target="_blank" rel="noopener">Download poster PDF</a>
-        <div class="qr">
-          <span class="eyebrow">Paper on arXiv</span>
-          <img src="assets/qr_arxiv.png" alt="QR code linking to arxiv.org/abs/2607.15845" width="170" height="170">
-          <a href="https://arxiv.org/abs/2607.15845" target="_blank" rel="noopener">arxiv.org/abs/2607.15845</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
 
 <section id="bibtex">
   <div class="wrap">
@@ -791,7 +768,6 @@ const lb = document.getElementById('lightbox'), lbImg = document.getElementById(
 function openLB(src, alt){ lbImg.src = src; lbImg.alt = alt || ''; lb.showModal(); }
 lb.addEventListener('click', e => { if (e.target === lb || e.target === lbImg) lb.close(); });
 document.getElementById('lbClose').addEventListener('click', () => lb.close());
-document.getElementById('posterZoom').addEventListener('click', () => openLB('assets/poster_2560.jpg', 'ECCV 2026 poster at full resolution'));
 
 /* ---------------- talk ---------------- */
 const CH = [[0,'Introduction'],[18,'The task: instruction → workflow → result'],[51,'Why direct text-to-JSON fails'],[86,'Our idea: invert, inject, infer'],[110,'Knowledge inversion: five levels'],[145,'Knowledge injection: what needs learning'],[172,'Knowledge inference: running it backwards'],[198,'Results'],[227,'Generalisation and ablation'],[249,'Qualitative comparison'],[275,'Conclusion']];
