@@ -240,9 +240,8 @@ tr.ours td:first-child{border-radius:6px 0 0 6px}tr.ours td:last-child{border-ra
 .tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;line-height:1.45;padding:8px 10px;border-radius:6px;box-shadow:var(--shadow);opacity:0;transition:opacity .12s;max-width:260px}
 .tip.show{opacity:1}
 .tip b{font-weight:600}
-.results-lower{display:grid;grid-template-columns:1.25fr .75fr;gap:22px;margin-top:22px;align-items:stretch}
+.results-lower{display:grid;grid-template-columns:1fr;gap:22px;margin-top:22px}
 details.fulltable{margin-top:18px}
-@media (max-width:900px){.results-lower{grid-template-columns:1fr}}
 .metric-note{font-size:12.5px;color:var(--ink-3);margin-top:12px;line-height:1.6}
 details.fulltable summary{cursor:pointer;font-weight:500;color:var(--brand-ink);font-size:14.5px;list-style:none;display:inline-flex;align-items:center;gap:8px;padding:4px 0}
 details.fulltable summary::-webkit-details-marker{display:none}
@@ -251,7 +250,7 @@ details.fulltable[open] summary::before{content:"−"}
 details.fulltable .table-scroll{margin-top:12px}
 .scale{display:flex;flex-direction:column}
 .scale p{margin:0 0 14px;color:var(--ink-2);font-size:14.5px}
-.scale .pair{margin-top:auto}
+.scale .pair{max-width:760px}
 .pair{display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;font-size:13.5px}
 .pair .lab{color:var(--ink-2)}
 .pair .track{height:14px;background:var(--bar-track);border-radius:3px;position:relative;overflow:hidden}
