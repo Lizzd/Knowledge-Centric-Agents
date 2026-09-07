@@ -240,7 +240,8 @@ tr.ours td:first-child{border-radius:6px 0 0 6px}tr.ours td:last-child{border-ra
 .tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12.5px;line-height:1.45;padding:8px 10px;border-radius:6px;box-shadow:var(--shadow);opacity:0;transition:opacity .12s;max-width:260px}
 .tip.show{opacity:1}
 .tip b{font-weight:600}
-.results-lower{display:grid;grid-template-columns:1.25fr .75fr;gap:22px;margin-top:22px;align-items:start}
+.results-lower{display:grid;grid-template-columns:1.25fr .75fr;gap:22px;margin-top:22px;align-items:stretch}
+details.fulltable{margin-top:18px}
 @media (max-width:900px){.results-lower{grid-template-columns:1fr}}
 .metric-note{font-size:12.5px;color:var(--ink-3);margin-top:12px;line-height:1.6}
 details.fulltable summary{cursor:pointer;font-weight:500;color:var(--brand-ink);font-size:14.5px;list-style:none;display:inline-flex;align-items:center;gap:8px;padding:4px 0}
@@ -248,9 +249,9 @@ details.fulltable summary::-webkit-details-marker{display:none}
 details.fulltable summary::before{content:"+";font-family:Consolas,"SFMono-Regular",Menlo,monospace;width:18px;height:18px;border:1px solid var(--brand-line);border-radius:4px;display:inline-grid;place-items:center;font-size:13px}
 details.fulltable[open] summary::before{content:"−"}
 details.fulltable .table-scroll{margin-top:12px}
-.scale{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
-.scale h3{font-size:18px;margin-bottom:4px}
+.scale{display:flex;flex-direction:column}
 .scale p{margin:0 0 14px;color:var(--ink-2);font-size:14.5px}
+.scale .pair{margin-top:auto}
 .pair{display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;font-size:13.5px}
 .pair .lab{color:var(--ink-2)}
 .pair .track{height:14px;background:var(--bar-track);border-radius:3px;position:relative;overflow:hidden}
@@ -310,7 +311,7 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
       <sup>1</sup>INSAIT, Sofia University “St. Kliment Ohridski” &nbsp;·&nbsp; <sup>2</sup>Adobe Research
     </p>
     <div class="actions">
-      <a class="btn primary" href="https://arxiv.org/abs/2607.15845" target="_blank" rel="noopener">arXiv</a>
+      <a class="btn" href="https://arxiv.org/abs/2607.15845" target="_blank" rel="noopener">arXiv</a>
       <!-- TODO: replace with the repository URL and remove the "soon" class -->
       <a class="btn soon" id="codeBtn" href="CODE_URL" aria-disabled="true" onclick="return false">Code <span class="tag">coming soon</span></a>
       <a class="btn" id="talkBtn" href="#" target="_blank" rel="noopener" hidden>5-minute talk ↗</a>
@@ -429,17 +430,17 @@ dialog.lb .close{position:fixed;top:14px;right:16px;background:rgba(255,255,255,
     </div>
     <div class="charts" id="charts"></div>
     <div class="chart-legend" style="margin-top:14px"><span><i class="ours"></i>Ours (Qwen3-14B, hierarchical)</span><span><i></i>GPT-5 baselines</span></div>
+    <details class="fulltable">
+      <summary>All six metrics on the test set</summary>
+      <div class="table-scroll"><table id="fullTable"></table></div>
+      <p class="metric-note"><b>VND</b> distinct valid node types · <b>NodeComp / LinkComp</b> share of nodes correctly instantiated / correctly connected · <b>TaskCons</b> GPT-judged task fulfilment · <b>Pass</b> executes in ComfyUI · <b>Resolve</b> executes and fulfils the task. All in %, except VND.</p>
+    </details>
     <div class="results-lower">
-      <div>
-        <details class="fulltable">
-          <summary>All six metrics on the test set</summary>
-          <div class="table-scroll"><table id="fullTable"></table></div>
-          <p class="metric-note"><b>VND</b> distinct valid node types · <b>NodeComp / LinkComp</b> share of nodes correctly instantiated / correctly connected · <b>TaskCons</b> GPT-judged task fulfilment · <b>Pass</b> executes in ComfyUI · <b>Resolve</b> executes and fulfils the task. All in %, except VND.</p>
-        </details>
-        <h3 style="font-size:18px;margin:26px 0 10px">Generalisation to external benchmarks</h3>
+      <div class="card">
+        <h3>Generalisation to external benchmarks</h3>
         <div class="table-scroll"><table id="extTable"></table></div>
       </div>
-      <div class="scale">
+      <div class="card scale">
         <h3>Hierarchy beats scale</h3>
         <p>A control experiment: train a larger Qwen3-32B end-to-end, straight from instruction to pseudo-code, with no intermediate strategy level.</p>
         <div class="pair" id="scalePair"></div>
