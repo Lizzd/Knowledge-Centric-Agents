@@ -11,7 +11,7 @@ Static site, no build step needed to deploy.
 ## Three things to fill in (search for them in `index.html`)
 - `CODE_URL` — the code repository. Also remove `class="soon"`, `aria-disabled` and the `onclick` on that button.
 - `YOUTUBE_URL` — set the constant at the top of the script to show a YouTube link under the talk video.
-- Open Graph image URL is set to `https://lizzd.github.io/Knowledge-Centric-Agents/assets/og.jpg`; change it if the site moves.
+- `SITE_URL` — the absolute URL of the deployed page, used for the Open Graph preview image (`assets/og.jpg`).
 
 ## Contents
 - `index.html` — the page (single file, inline CSS/JS, Google Fonts as the only external dependency).
